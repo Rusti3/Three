@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 import "./style.css";
 import { createPlaceholderCar } from "./game/carPlaceholder";
+import { loadCarModel } from "./game/carModel";
 import { createKeyboardControls } from "./game/controls";
 import { createFollowCamera } from "./game/followCamera";
 import { createVehicle, type VehicleState } from "./game/vehicle";
@@ -10,6 +11,7 @@ declare global {
   interface Window {
     __THREE_DRIVE__?: {
       getCarState: () => VehicleState;
+      isCarModelLoaded: () => boolean;
     };
   }
 }
@@ -60,8 +62,20 @@ grid.material.opacity = 0.15;
 scene.add(grid);
 
 const carRoot = new THREE.Group();
-carRoot.add(createPlaceholderCar());
+const placeholderCar = createPlaceholderCar();
+carRoot.add(placeholderCar);
 scene.add(carRoot);
+
+let carModelLoaded = false;
+void loadCarModel()
+  .then((model) => {
+    carRoot.remove(placeholderCar);
+    carRoot.add(model);
+    carModelLoaded = true;
+  })
+  .catch((error) => {
+    console.error("Failed to load sample.glb, using placeholder model.", error);
+  });
 
 const controls = createKeyboardControls(window);
 const vehicle = createVehicle({
@@ -77,7 +91,8 @@ const followCamera = createFollowCamera(camera, {
 });
 
 window.__THREE_DRIVE__ = {
-  getCarState: () => vehicle.getState()
+  getCarState: () => vehicle.getState(),
+  isCarModelLoaded: () => carModelLoaded
 };
 
 const clock = new THREE.Clock();

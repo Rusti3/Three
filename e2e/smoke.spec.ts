@@ -10,6 +10,7 @@ declare global {
   interface Window {
     __THREE_DRIVE__?: {
       getCarState: () => SerializableState;
+      isCarModelLoaded: () => boolean;
     };
   }
 }
@@ -21,6 +22,10 @@ test("renders scene canvas and responds to keyboard input", async ({ page }) => 
 
   await canvas.click();
   const beforeMove = await page.evaluate(() => window.__THREE_DRIVE__?.getCarState());
+
+  await expect
+    .poll(async () => page.evaluate(() => window.__THREE_DRIVE__?.isCarModelLoaded() ?? false))
+    .toBe(true);
 
   await page.keyboard.down("w");
   await page.waitForTimeout(600);
