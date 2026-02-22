@@ -18,9 +18,9 @@ describe("car model helpers", () => {
 
     applyCarModelDefaults(root);
 
-    expect(root.scale.x).toBeCloseTo(0.7);
-    expect(root.scale.y).toBeCloseTo(0.7);
-    expect(root.scale.z).toBeCloseTo(0.7);
+    expect(root.scale.x).toBeCloseTo(14);
+    expect(root.scale.y).toBeCloseTo(14);
+    expect(root.scale.z).toBeCloseTo(14);
     expect(root.position.y).toBeCloseTo(0.02);
     expect(mesh.castShadow).toBe(true);
     expect(mesh.receiveShadow).toBe(true);

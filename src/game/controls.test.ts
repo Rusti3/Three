@@ -30,7 +30,7 @@ describe("keyboard controls", () => {
     keyDown("w");
     keyDown("a");
     expect(controls.throttle).toBe(1);
-    expect(controls.steer).toBe(-1);
+    expect(controls.steer).toBe(1);
 
     keyUp("w");
     keyUp("a");
@@ -43,7 +43,7 @@ describe("keyboard controls", () => {
     keyDown("w");
     keyDown("d");
     expect(controls.throttle).toBe(1);
-    expect(controls.steer).toBe(1);
+    expect(controls.steer).toBe(-1);
   });
 
   it("toggles reset key state", () => {

@@ -30,7 +30,7 @@ export function createKeyboardControls(target: Window): ControlsState {
     const rightPressed = [...RIGHT_KEYS].some((key) => pressedKeys.has(key));
 
     state.throttle = forwardPressed === backwardPressed ? 0 : forwardPressed ? 1 : -1;
-    state.steer = leftPressed === rightPressed ? 0 : leftPressed ? -1 : 1;
+    state.steer = leftPressed === rightPressed ? 0 : leftPressed ? 1 : -1;
     state.brake = backwardPressed || pressedKeys.has(" ");
   };
 

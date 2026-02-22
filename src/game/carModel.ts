@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-const DEFAULT_MODEL_SCALE = 0.7;
+const DEFAULT_MODEL_SCALE = 0.7 * 20;
 const DEFAULT_MODEL_Y_OFFSET = 0.02;
 
 export function getCarModelUrl() {
