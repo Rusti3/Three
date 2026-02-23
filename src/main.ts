@@ -6,6 +6,7 @@ import { loadRailModel } from "./game/railModel";
 import { createTrainAnimator } from "./game/trainAnimation";
 import { loadTrainModel } from "./game/trainModel";
 import { createTrainMotion, type TrainState } from "./game/trainMotion";
+import { createTrainSizer, type TrainSizer } from "./game/trainSizing";
 
 declare global {
   interface Window {
@@ -25,7 +26,6 @@ if (!app) {
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9db8d6);
-scene.fog = new THREE.Fog(0x9db8d6, 140, 460);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -66,6 +66,26 @@ scene.add(trainRoot);
 let railLoaded = false;
 let trainLoaded = false;
 let trainAnimator: ReturnType<typeof createTrainAnimator> | null = null;
+let trainSizer: TrainSizer | null = null;
+
+const scaleInput = document.querySelector<HTMLInputElement>("#train-scale");
+const scaleValue = document.querySelector<HTMLSpanElement>("#train-scale-value");
+let pendingScaleMultiplier = scaleInput ? Number(scaleInput.value) : 1;
+
+function setTrainScaleMultiplier(value: number) {
+  pendingScaleMultiplier = value;
+  if (scaleValue) {
+    scaleValue.textContent = `${value.toFixed(2)}x`;
+  }
+  trainSizer?.setMultiplier(value);
+}
+
+if (scaleInput) {
+  scaleInput.addEventListener("input", () => {
+    setTrainScaleMultiplier(Number(scaleInput.value));
+  });
+  setTrainScaleMultiplier(pendingScaleMultiplier);
+}
 
 const trainMotion = createTrainMotion({
   startZ: -80,
@@ -132,6 +152,11 @@ void loadTrainModel()
   .then(({ model, animations }) => {
     trainRoot.add(model);
     trainAnimator = createTrainAnimator(model, animations);
+    trainSizer = createTrainSizer(model, {
+      minMultiplier: scaleInput ? Number(scaleInput.min) : 0.2,
+      maxMultiplier: scaleInput ? Number(scaleInput.max) : 5
+    });
+    trainSizer.setMultiplier(pendingScaleMultiplier);
     trainLoaded = true;
     alignTrainToRail();
   })

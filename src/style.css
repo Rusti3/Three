@@ -36,3 +36,29 @@ body {
   margin: 0;
   font-size: 14px;
 }
+
+.controls-right {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
+  background: rgba(10, 13, 24, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.controls-right label {
+  font-size: 13px;
+}
+
+.controls-right input[type="range"] {
+  width: 100%;
+}
+
+.controls-right__value {
+  font-size: 12px;
+  opacity: 0.85;
+}

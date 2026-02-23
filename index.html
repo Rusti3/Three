@@ -10,6 +10,13 @@
     <div class="hud">
       <p><strong>Train:</strong> automatic forward motion on rails, mouse wheel = zoom</p>
     </div>
+    <div class="controls-right">
+      <label for="train-scale"><strong>Train size</strong></label>
+      <input id="train-scale" type="range" min="0.2" max="5" step="0.01" value="1" />
+      <div class="controls-right__value">
+        <span id="train-scale-value">1.00x</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
