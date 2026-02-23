@@ -3,6 +3,7 @@ import * as THREE from "three";
 import "./style.css";
 import { createFollowCamera } from "./game/followCamera";
 import { loadRailModel } from "./game/railModel";
+import { createTrainAnimator } from "./game/trainAnimation";
 import { loadTrainModel } from "./game/trainModel";
 import { createTrainMotion, type TrainState } from "./game/trainMotion";
 
@@ -64,6 +65,7 @@ scene.add(trainRoot);
 
 let railLoaded = false;
 let trainLoaded = false;
+let trainAnimator: ReturnType<typeof createTrainAnimator> | null = null;
 
 const trainMotion = createTrainMotion({
   startZ: -80,
@@ -127,8 +129,9 @@ void loadRailModel()
   });
 
 void loadTrainModel()
-  .then((train) => {
-    trainRoot.add(train);
+  .then(({ model, animations }) => {
+    trainRoot.add(model);
+    trainAnimator = createTrainAnimator(model, animations);
     trainLoaded = true;
     alignTrainToRail();
   })
@@ -164,6 +167,7 @@ function renderFrame() {
   trainRoot.position.set(state.position.x, state.position.y, state.position.z);
   trainRoot.rotation.y = state.heading;
 
+  trainAnimator?.update(dt, state.speed);
   followCamera.update(state, dt);
   renderer.render(scene, camera);
 }
