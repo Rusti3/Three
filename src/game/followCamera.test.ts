@@ -94,4 +94,20 @@ describe("follow camera", () => {
     expect(camera.position.x).toBeCloseTo(5, 2);
     expect(camera.position.z).toBeCloseTo(-2.5, 2);
   });
+
+  it("clamps zoom to 20000 max", () => {
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+    const follow = createFollowCamera(camera, {
+      distance: 1,
+      height: 1,
+      lookAhead: 0,
+      damping: 100,
+      sideOffset: 1,
+      minZoom: 0.5,
+      maxZoom: 20000
+    });
+
+    follow.zoomBy(50000);
+    expect(follow.getZoom()).toBe(20000);
+  });
 });

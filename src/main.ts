@@ -82,7 +82,7 @@ const followCamera = createFollowCamera(camera, {
   sideOffset: 26,
   initialZoom: 1,
   minZoom: 0.55,
-  maxZoom: 5
+  maxZoom: 20000
 });
 
 function boxIsValid(box: THREE.Box3) {
@@ -148,7 +148,7 @@ renderer.domElement.addEventListener(
   (event) => {
     event.preventDefault();
     // Scroll up zooms in (smaller zoom), scroll down zooms out.
-    followCamera.zoomBy(event.deltaY * 0.0012);
+    followCamera.zoomBy(event.deltaY * 0.03);
   },
   { passive: false }
 );
