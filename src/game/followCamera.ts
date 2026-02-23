@@ -1,6 +1,13 @@
 import * as THREE from "three";
 
-import type { VehicleState } from "./vehicle";
+export type FollowTargetState = {
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  heading: number;
+};
 
 export type FollowCameraOptions = {
   distance: number;
@@ -10,7 +17,7 @@ export type FollowCameraOptions = {
 };
 
 export type FollowCameraController = {
-  update: (state: VehicleState, dt: number) => void;
+  update: (state: FollowTargetState, dt: number) => void;
 };
 
 const DEFAULT_OPTIONS: FollowCameraOptions = {
@@ -33,7 +40,7 @@ export function createFollowCamera(
   const desiredPosition = new THREE.Vector3();
   const currentLookAt = new THREE.Vector3();
 
-  const update = (state: VehicleState, dt: number) => {
+  const update = (state: FollowTargetState, dt: number) => {
     const alpha = lerpAlpha(opts.damping, dt);
     const backOffset = new THREE.Vector3(0, opts.height, -opts.distance);
     backOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.heading);

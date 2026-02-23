@@ -1,51 +1,41 @@
 import { expect, test } from "@playwright/test";
 
-type SerializableState = {
+type TrainState = {
   position: { x: number; y: number; z: number };
-  heading: number;
   speed: number;
+  loopCount: number;
+  heading: number;
 };
 
 declare global {
   interface Window {
     __THREE_DRIVE__?: {
-      getCarState: () => SerializableState;
-      isCarModelLoaded: () => boolean;
+      getTrainState: () => TrainState;
+      isTrainLoaded: () => boolean;
+      isRailLoaded: () => boolean;
     };
   }
 }
 
-test("renders scene canvas and responds to keyboard input", async ({ page }) => {
+test("renders scene and train moves forward on rails automatically", async ({ page }) => {
   await page.goto("/");
+
   const canvas = page.locator("canvas[data-testid='scene-canvas']");
   await expect(canvas).toBeVisible();
 
-  await canvas.click();
-  const beforeMove = await page.evaluate(() => window.__THREE_DRIVE__?.getCarState());
-
   await expect
-    .poll(async () => page.evaluate(() => window.__THREE_DRIVE__?.isCarModelLoaded() ?? false))
+    .poll(async () => page.evaluate(() => window.__THREE_DRIVE__?.isRailLoaded() ?? false), { timeout: 60000 })
+    .toBe(true);
+  await expect
+    .poll(async () => page.evaluate(() => window.__THREE_DRIVE__?.isTrainLoaded() ?? false), { timeout: 60000 })
     .toBe(true);
 
-  await page.keyboard.down("w");
-  await page.waitForTimeout(600);
-  await page.keyboard.up("w");
+  const before = await page.evaluate(() => window.__THREE_DRIVE__?.getTrainState());
+  await page.waitForTimeout(1200);
+  const after = await page.evaluate(() => window.__THREE_DRIVE__?.getTrainState());
 
-  const afterMove = await page.evaluate(() => window.__THREE_DRIVE__?.getCarState());
-  expect(afterMove).toBeTruthy();
-  expect(beforeMove).toBeTruthy();
-
-  const movedDistance = Math.hypot(
-    (afterMove?.position.x ?? 0) - (beforeMove?.position.x ?? 0),
-    (afterMove?.position.z ?? 0) - (beforeMove?.position.z ?? 0)
-  );
-  expect(movedDistance).toBeGreaterThan(0.1);
-
-  const headingBeforeTurn = afterMove?.heading ?? 0;
-  await page.keyboard.down("a");
-  await page.waitForTimeout(500);
-  await page.keyboard.up("a");
-
-  const afterTurn = await page.evaluate(() => window.__THREE_DRIVE__?.getCarState());
-  expect(Math.abs((afterTurn?.heading ?? 0) - headingBeforeTurn)).toBeGreaterThan(0.02);
+  expect(before).toBeTruthy();
+  expect(after).toBeTruthy();
+  expect((after?.position.z ?? 0) - (before?.position.z ?? 0)).toBeGreaterThan(0.1);
+  expect(after?.speed ?? 0).toBeGreaterThan(0);
 });

@@ -1,17 +1,17 @@
 import * as THREE from "three";
 
 import "./style.css";
-import { createPlaceholderCar } from "./game/carPlaceholder";
-import { loadCarModel } from "./game/carModel";
-import { createKeyboardControls } from "./game/controls";
 import { createFollowCamera } from "./game/followCamera";
-import { createVehicle, type VehicleState } from "./game/vehicle";
+import { loadRailModel } from "./game/railModel";
+import { loadTrainModel } from "./game/trainModel";
+import { createTrainMotion, type TrainState } from "./game/trainMotion";
 
 declare global {
   interface Window {
     __THREE_DRIVE__?: {
-      getCarState: () => VehicleState;
-      isCarModelLoaded: () => boolean;
+      getTrainState: () => TrainState;
+      isTrainLoaded: () => boolean;
+      isRailLoaded: () => boolean;
     };
   }
 }
@@ -22,10 +22,10 @@ if (!app) {
 }
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x80b0df);
-scene.fog = new THREE.Fog(0x80b0df, 45, 180);
+scene.background = new THREE.Color(0x9db8d6);
+scene.fog = new THREE.Fog(0x9db8d6, 140, 460);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 400);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.shadowMap.enabled = true;
@@ -35,64 +35,106 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.domElement.dataset.testid = "scene-canvas";
 app.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xd7e9ff, 0x2f3a4c, 0.8));
-const sun = new THREE.DirectionalLight(0xffffff, 1.05);
-sun.position.set(18, 28, 10);
+scene.add(new THREE.HemisphereLight(0xe7efff, 0x445e53, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+sun.position.set(40, 80, -10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.near = 0.5;
-sun.shadow.camera.far = 120;
-sun.shadow.camera.left = -45;
-sun.shadow.camera.right = 45;
-sun.shadow.camera.top = 45;
-sun.shadow.camera.bottom = -45;
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 260;
+sun.shadow.camera.left = -130;
+sun.shadow.camera.right = 130;
+sun.shadow.camera.top = 130;
+sun.shadow.camera.bottom = -130;
 scene.add(sun);
 
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(260, 260, 1, 1),
-  new THREE.MeshStandardMaterial({ color: 0x1f5132, roughness: 0.95, metalness: 0.05 })
+const terrain = new THREE.Mesh(
+  new THREE.PlaneGeometry(1200, 1200, 1, 1),
+  new THREE.MeshStandardMaterial({ color: 0x2f5d43, roughness: 0.95, metalness: 0.02 })
 );
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
+terrain.rotation.x = -Math.PI / 2;
+terrain.receiveShadow = true;
+scene.add(terrain);
 
-const grid = new THREE.GridHelper(220, 48, 0xffffff, 0xffffff);
-grid.material.transparent = true;
-grid.material.opacity = 0.15;
-scene.add(grid);
+const railRoot = new THREE.Group();
+const trainRoot = new THREE.Group();
+scene.add(railRoot);
+scene.add(trainRoot);
 
-const carRoot = new THREE.Group();
-const placeholderCar = createPlaceholderCar();
-carRoot.add(placeholderCar);
-scene.add(carRoot);
+let railLoaded = false;
+let trainLoaded = false;
 
-let carModelLoaded = false;
-void loadCarModel()
-  .then((model) => {
-    carRoot.remove(placeholderCar);
-    carRoot.add(model);
-    carModelLoaded = true;
+const trainMotion = createTrainMotion({
+  startZ: -80,
+  endZ: 80,
+  speed: 14,
+  x: 0,
+  y: 0,
+  heading: 0
+});
+
+const followCamera = createFollowCamera(camera, {
+  distance: 32,
+  height: 12,
+  damping: 5.2,
+  lookAhead: 24
+});
+
+function boxIsValid(box: THREE.Box3) {
+  return Number.isFinite(box.min.x) && Number.isFinite(box.max.x);
+}
+
+function alignTrainToRail() {
+  if (!railLoaded || !trainLoaded) {
+    return;
+  }
+
+  const railBox = new THREE.Box3().setFromObject(railRoot);
+  const trainBox = new THREE.Box3().setFromObject(trainRoot);
+
+  if (!boxIsValid(railBox) || !boxIsValid(trainBox)) {
+    return;
+  }
+
+  const railLength = railBox.max.z - railBox.min.z;
+  if (railLength > 2) {
+    const padding = Math.max(2, railLength * 0.04);
+    const startZ = railBox.min.z + padding;
+    const endZ = railBox.max.z - padding;
+    trainMotion.setBounds(startZ, endZ);
+  }
+
+  const trainY = railBox.max.y - trainBox.min.y;
+  trainMotion.setBasePosition(0, trainY);
+
+  const state = trainMotion.getState();
+  trainRoot.position.set(state.position.x, state.position.y, state.position.z);
+}
+
+void loadRailModel()
+  .then((rail) => {
+    railRoot.add(rail);
+    railLoaded = true;
+    alignTrainToRail();
   })
   .catch((error) => {
-    console.error("Failed to load sample.glb, using placeholder model.", error);
+    console.error("Failed to load railway.glb", error);
   });
 
-const controls = createKeyboardControls(window);
-const vehicle = createVehicle({
-  position: { x: 0, y: 0.06, z: 0 },
-  heading: 0,
-  speed: 0
-});
-const followCamera = createFollowCamera(camera, {
-  distance: 9,
-  height: 4.1,
-  damping: 7.5,
-  lookAhead: 9.5
-});
+void loadTrainModel()
+  .then((train) => {
+    trainRoot.add(train);
+    trainLoaded = true;
+    alignTrainToRail();
+  })
+  .catch((error) => {
+    console.error("Failed to load the_polar_express_locomotive.glb", error);
+  });
 
 window.__THREE_DRIVE__ = {
-  getCarState: () => vehicle.getState(),
-  isCarModelLoaded: () => carModelLoaded
+  getTrainState: () => trainMotion.getState(),
+  isTrainLoaded: () => trainLoaded,
+  isRailLoaded: () => railLoaded
 };
 
 const clock = new THREE.Clock();
@@ -101,10 +143,10 @@ function renderFrame() {
   requestAnimationFrame(renderFrame);
 
   const dt = Math.min(clock.getDelta(), 1 / 30);
-  const state = vehicle.update(dt, controls);
+  const state = trainMotion.update(dt);
 
-  carRoot.position.set(state.position.x, state.position.y, state.position.z);
-  carRoot.rotation.y = state.heading;
+  trainRoot.position.set(state.position.x, state.position.y, state.position.z);
+  trainRoot.rotation.y = state.heading;
 
   followCamera.update(state, dt);
   renderer.render(scene, camera);
