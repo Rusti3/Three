@@ -6,7 +6,7 @@ import { applyTrainDefaults, getTrainModelUrl, TRAIN_TARGET_LONGEST_SIDE } from 
 describe("train model helpers", () => {
   it("returns url that points to the train GLB", () => {
     const url = getTrainModelUrl();
-    expect(url).toContain("the_polar_express_locomotive.glb");
+    expect(url).toContain("699c27994f79ee2ab165166d.glb");
   });
 
   it("applies model defaults and enables shadows", () => {

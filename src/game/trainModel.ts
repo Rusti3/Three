@@ -7,7 +7,7 @@ import { fitModelToWorld } from "./modelFit";
 export const TRAIN_TARGET_LONGEST_SIDE = 1000;
 
 export function getTrainModelUrl() {
-  return new URL("../../the_polar_express_locomotive.glb", import.meta.url).href;
+  return new URL("../../699c27994f79ee2ab165166d.glb", import.meta.url).href;
 }
 
 export function applyTrainDefaults(model: THREE.Object3D) {
