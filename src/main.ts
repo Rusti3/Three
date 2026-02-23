@@ -12,6 +12,7 @@ declare global {
       getTrainState: () => TrainState;
       isTrainLoaded: () => boolean;
       isRailLoaded: () => boolean;
+      getCameraZoom: () => number;
     };
   }
 }
@@ -78,7 +79,10 @@ const followCamera = createFollowCamera(camera, {
   height: 11,
   damping: 5.2,
   lookAhead: 8,
-  sideOffset: 26
+  sideOffset: 26,
+  initialZoom: 1,
+  minZoom: 0.55,
+  maxZoom: 5
 });
 
 function boxIsValid(box: THREE.Box3) {
@@ -135,8 +139,19 @@ void loadTrainModel()
 window.__THREE_DRIVE__ = {
   getTrainState: () => trainMotion.getState(),
   isTrainLoaded: () => trainLoaded,
-  isRailLoaded: () => railLoaded
+  isRailLoaded: () => railLoaded,
+  getCameraZoom: () => followCamera.getZoom()
 };
+
+renderer.domElement.addEventListener(
+  "wheel",
+  (event) => {
+    event.preventDefault();
+    // Scroll up zooms in (smaller zoom), scroll down zooms out.
+    followCamera.zoomBy(event.deltaY * 0.0012);
+  },
+  { passive: false }
+);
 
 const clock = new THREE.Clock();
 

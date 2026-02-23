@@ -13,6 +13,7 @@ declare global {
       getTrainState: () => TrainState;
       isTrainLoaded: () => boolean;
       isRailLoaded: () => boolean;
+      getCameraZoom: () => number;
     };
   }
 }
@@ -38,4 +39,17 @@ test("renders scene and train moves forward on rails automatically", async ({ pa
   expect(after).toBeTruthy();
   expect((after?.position.z ?? 0) - (before?.position.z ?? 0)).toBeGreaterThan(0.1);
   expect(after?.speed ?? 0).toBeGreaterThan(0);
+
+  await canvas.hover();
+  const zoomBefore = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraZoom() ?? 0);
+  await page.mouse.wheel(0, 3000);
+  await page.waitForTimeout(150);
+  const zoomAfterOut = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraZoom() ?? 0);
+  expect(zoomAfterOut).toBeGreaterThan(zoomBefore);
+  expect(zoomAfterOut).toBeGreaterThan(3);
+
+  await page.mouse.wheel(0, -3000);
+  await page.waitForTimeout(150);
+  const zoomAfterIn = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraZoom() ?? 0);
+  expect(zoomAfterIn).toBeLessThanOrEqual(zoomAfterOut);
 });
