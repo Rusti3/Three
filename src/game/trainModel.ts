@@ -3,7 +3,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import { fitModelToWorld } from "./modelFit";
 
-const TRAIN_TARGET_LONGEST_SIDE = 20;
+// Increase/decrease this value to tune the train's world size.
+export const TRAIN_TARGET_LONGEST_SIDE = 20;
 
 export function getTrainModelUrl() {
   return new URL("../../the_polar_express_locomotive.glb", import.meta.url).href;

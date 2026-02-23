@@ -74,10 +74,11 @@ const trainMotion = createTrainMotion({
 });
 
 const followCamera = createFollowCamera(camera, {
-  distance: 32,
-  height: 12,
+  distance: 4,
+  height: 11,
   damping: 5.2,
-  lookAhead: 24
+  lookAhead: 8,
+  sideOffset: 26
 });
 
 function boxIsValid(box: THREE.Box3) {

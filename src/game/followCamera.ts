@@ -14,6 +14,7 @@ export type FollowCameraOptions = {
   height: number;
   damping: number;
   lookAhead: number;
+  sideOffset: number;
 };
 
 export type FollowCameraController = {
@@ -24,7 +25,8 @@ const DEFAULT_OPTIONS: FollowCameraOptions = {
   distance: 7.5,
   height: 3.6,
   damping: 8,
-  lookAhead: 8
+  lookAhead: 8,
+  sideOffset: 0
 };
 
 function lerpAlpha(damping: number, dt: number) {
@@ -42,10 +44,10 @@ export function createFollowCamera(
 
   const update = (state: FollowTargetState, dt: number) => {
     const alpha = lerpAlpha(opts.damping, dt);
-    const backOffset = new THREE.Vector3(0, opts.height, -opts.distance);
-    backOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.heading);
+    const followOffset = new THREE.Vector3(opts.sideOffset, opts.height, -opts.distance);
+    followOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.heading);
 
-    desiredPosition.set(state.position.x, state.position.y, state.position.z).add(backOffset);
+    desiredPosition.set(state.position.x, state.position.y, state.position.z).add(followOffset);
     camera.position.lerp(desiredPosition, alpha);
 
     const forward = new THREE.Vector3(Math.sin(state.heading), 0, Math.cos(state.heading));

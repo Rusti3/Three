@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 
-import { applyTrainDefaults, getTrainModelUrl } from "./trainModel";
+import { applyTrainDefaults, getTrainModelUrl, TRAIN_TARGET_LONGEST_SIDE } from "./trainModel";
 
 describe("train model helpers", () => {
   it("returns url that points to the train GLB", () => {
@@ -18,8 +18,10 @@ describe("train model helpers", () => {
 
     const box = new THREE.Box3().setFromObject(root);
     const size = box.getSize(new THREE.Vector3());
+    const longest = Math.max(size.x, size.y, size.z);
 
     expect(size.length()).toBeGreaterThan(0);
+    expect(longest).toBeCloseTo(TRAIN_TARGET_LONGEST_SIDE, 4);
     expect(Math.abs(box.min.y)).toBeLessThan(0.001);
     expect(mesh.castShadow).toBe(true);
     expect(mesh.receiveShadow).toBe(true);
