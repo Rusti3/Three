@@ -64,9 +64,12 @@ describe("rail builder", () => {
     const group = buildRailBetween(kit, start, end, { minOffset: 0 });
 
     expect(group.children.length).toBeGreaterThanOrEqual(3);
-    const piece = group.children[0];
-    expect(Math.abs(piece.rotation.y)).toBeGreaterThan(0.1);
-    expect(Math.abs(piece.rotation.x)).toBeLessThan(1e-6);
-    expect(Math.abs(piece.rotation.z)).toBeLessThan(1e-6);
+    expect(Math.abs(group.rotation.y)).toBeLessThan(1e-6);
+
+    for (const piece of group.children) {
+      expect(Math.abs(piece.rotation.y)).toBeGreaterThan(0.1);
+      expect(Math.abs(piece.rotation.x)).toBeLessThan(1e-6);
+      expect(Math.abs(piece.rotation.z)).toBeLessThan(1e-6);
+    }
   });
 });

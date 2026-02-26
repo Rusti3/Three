@@ -46,6 +46,20 @@ Default values:
 
 ## Version Summary
 
+### v0.5.4 (2026-02-26)
+
+What was done:
+- Refined rail orientation so each placed rail segment (`start/main/end`) gets its own `rotation.y` assignment.
+- Kept single-axis policy: no `rotation.x`/`rotation.z` tilt for rail segments.
+- Updated tests to validate that every segment in the built rail group is rotated on `Y` individually while the parent group stays unrotated.
+
+Why these functions were added:
+- To ensure per-segment model rotation behavior instead of relying on shared orientation assumptions.
+
+What changed for the user:
+- Each spawned rail model now explicitly rotates by `Y` as an individual segment.
+- Rail line keeps one-axis rotation behavior (horizontal turn only).
+
 ### v0.5.3 (2026-02-26)
 
 What was done:

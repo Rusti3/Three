@@ -52,6 +52,13 @@ function pointAtDistanceXZ(from: THREE.Vector3, dirXZ: THREE.Vector3, distance: 
   return new THREE.Vector3(from.x + dirXZ.x * distance, y, from.z + dirXZ.z * distance);
 }
 
+function applyYawToPiece(piece: THREE.Object3D, from: THREE.Vector3, to: THREE.Vector3) {
+  const dirX = to.x - from.x;
+  const dirZ = to.z - from.z;
+  const yaw = Math.atan2(dirX, dirZ);
+  piece.rotation.set(0, yaw, 0);
+}
+
 export function buildRailBetween(
   pieces: RailPieces,
   start: THREE.Vector3,
@@ -68,9 +75,6 @@ export function buildRailBetween(
   }
 
   dirXZ.normalize();
-  // Keep rail rotation on one axis only (Y): island-to-island horizontal direction.
-  const yaw = Math.atan2(dirXZ.x, dirXZ.z);
-  const orientation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
 
   const startLengthXZ = pieces.startLength;
   const mainLengthXZ = pieces.mainLength;
@@ -95,8 +99,15 @@ export function buildRailBetween(
 
   // add start piece
   const startPiece = pieces.start.clone(true);
-  startPiece.quaternion.copy(orientation);
-  startPiece.position.copy(pointAtDistanceXZ(start, dirXZ, startCenterS, yAtS(startCenterS)));
+  const startPos = pointAtDistanceXZ(start, dirXZ, startCenterS, yAtS(startCenterS));
+  const startDirTarget = pointAtDistanceXZ(
+    start,
+    dirXZ,
+    Math.min(totalDistanceXZ, startCenterS + Math.max(0.01, startLengthXZ)),
+    yAtS(Math.min(totalDistanceXZ, startCenterS + Math.max(0.01, startLengthXZ)))
+  );
+  startPiece.position.copy(startPos);
+  applyYawToPiece(startPiece, startPos, startDirTarget);
   startPiece.userData.sectionType = "start";
   applyShadows(startPiece);
   group.add(startPiece);
@@ -106,17 +117,22 @@ export function buildRailBetween(
   for (let i = 0; i < mainCount; i += 1) {
     const centerS = startEndS + mainLengthXZ * (i + 0.5);
     const position = pointAtDistanceXZ(start, dirXZ, centerS, yAtS(centerS));
+    const dirTargetS = Math.min(totalDistanceXZ, centerS + Math.max(0.01, mainLengthXZ));
+    const dirTarget = pointAtDistanceXZ(start, dirXZ, dirTargetS, yAtS(dirTargetS));
     const mainPiece = pieces.main.clone(true);
     mainPiece.position.copy(position);
-    mainPiece.quaternion.copy(orientation);
+    applyYawToPiece(mainPiece, position, dirTarget);
     mainPiece.userData.sectionType = "main";
     applyShadows(mainPiece);
     group.add(mainPiece);
   }
 
   const endPiece = pieces.start.clone(true);
-  endPiece.quaternion.copy(orientation);
-  endPiece.position.copy(pointAtDistanceXZ(start, dirXZ, endCenterS, yAtS(endCenterS)));
+  const endPos = pointAtDistanceXZ(start, dirXZ, endCenterS, yAtS(endCenterS));
+  const endPrevS = Math.max(0, endCenterS - Math.max(0.01, endLengthXZ));
+  const endPrevPos = pointAtDistanceXZ(start, dirXZ, endPrevS, yAtS(endPrevS));
+  endPiece.position.copy(endPos);
+  applyYawToPiece(endPiece, endPrevPos, endPos);
   endPiece.userData.sectionType = "end";
   applyShadows(endPiece);
   group.add(endPiece);
