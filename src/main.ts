@@ -94,7 +94,10 @@ const ISLAND_MAX_Y = 130;
 const islandShell = new THREE.MeshStandardMaterial({
   color: 0x62886e,
   roughness: 0.92,
-  metalness: 0.04
+  metalness: 0.04,
+  side: THREE.DoubleSide,
+  transparent: false,
+  opacity: 1
 });
 
 const islands: PlacedIsland[] = [];

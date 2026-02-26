@@ -45,6 +45,17 @@ Default values:
 
 ## Version Summary
 
+### v0.3.2 (2026-02-26)
+
+What was done:
+- Fixed island top rendering artifacts by forcing opaque double-sided island material.
+
+Why these functions were added:
+- To prevent the upper island surface from looking semi-transparent due to face culling artifacts.
+
+What changed for the user:
+- Top side of islands now renders visually solid.
+
 ### v0.3.1 (2026-02-26)
 
 What was done:
