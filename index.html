@@ -3,19 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Three.js Train Demo</title>
+    <title>Floating Islands</title>
   </head>
   <body>
     <div id="app"></div>
     <div class="hud">
-      <p><strong>Train:</strong> automatic forward motion on rails, mouse wheel = zoom</p>
+      <p><strong>Floating Islands:</strong> click the canvas to spawn a new island</p>
+      <p><strong>Mouse:</strong> drag to orbit, wheel to zoom, right drag to pan</p>
     </div>
     <div class="controls-right">
-      <label for="train-scale"><strong>Train size</strong></label>
-      <input id="train-scale" type="range" min="0.2" max="5" step="0.01" value="1" />
-      <div class="controls-right__value">
-        <span id="train-scale-value">1.00x</span>
-      </div>
+      <label for="seed-input">SEED</label>
+      <input id="seed-input" type="number" value="4121132" />
+      <label for="n-input">N</label>
+      <input id="n-input" type="number" min="64" max="280" step="1" value="160" />
+      <label for="xy-scale-input">XY_SCALE</label>
+      <input id="xy-scale-input" type="number" min="8" max="96" step="0.1" value="32" />
+      <label for="z-scale-input">Z_SCALE</label>
+      <input id="z-scale-input" type="number" min="2" max="40" step="0.1" value="10" />
+      <label for="mountain-amp-input">MOUNTAIN_AMP</label>
+      <input id="mountain-amp-input" type="number" min="0.05" max="1.2" step="0.01" value="0.58" />
+      <label for="cliff-amp-input">CLIFF_AMP</label>
+      <input id="cliff-amp-input" type="number" min="0" max="0.6" step="0.01" value="0.07" />
+      <div class="controls-right__value">Islands: <span id="island-count">0</span></div>
+      <div id="status" class="controls-right__status">Ready.</div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

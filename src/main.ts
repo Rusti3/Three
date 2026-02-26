@@ -1,20 +1,17 @@
 import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import "./style.css";
-import { createFollowCamera } from "./game/followCamera";
-import { loadRailModel } from "./game/railModel";
-import { createTrainAnimator } from "./game/trainAnimation";
-import { loadTrainModel } from "./game/trainModel";
-import { createTrainMotion, type TrainState } from "./game/trainMotion";
-import { createTrainSizer, type TrainSizer } from "./game/trainSizing";
+import { createIslandData, type IslandParams } from "./game/islandGenerator";
+import { buildIslandGeometry } from "./game/islandMesh";
+import { findSpawnPosition } from "./game/islandPlacement";
+import type { PlacedIsland } from "./game/islandTypes";
 
 declare global {
   interface Window {
     __THREE_DRIVE__?: {
-      getTrainState: () => TrainState;
-      isTrainLoaded: () => boolean;
-      isRailLoaded: () => boolean;
-      getCameraZoom: () => number;
+      getIslandCount: () => number;
+      getCameraDistance: () => number;
     };
   }
 }
@@ -25,9 +22,11 @@ if (!app) {
 }
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9db8d6);
+scene.background = new THREE.Color(0xa8c9f0);
+scene.fog = new THREE.Fog(0xa8c9f0, 180, 1200);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 90, 190);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.shadowMap.enabled = true;
@@ -37,166 +36,158 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.domElement.dataset.testid = "scene-canvas";
 app.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xe7efff, 0x445e53, 0.85));
-const sun = new THREE.DirectionalLight(0xffffff, 1.1);
-sun.position.set(40, 80, -10);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = true;
+controls.minDistance = 8;
+controls.maxDistance = 800;
+controls.target.set(0, 40, 0);
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xf0f7ff, 0x3f5660, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(120, 180, 90);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 260;
-sun.shadow.camera.left = -130;
-sun.shadow.camera.right = 130;
-sun.shadow.camera.top = 130;
-sun.shadow.camera.bottom = -130;
+sun.shadow.camera.far = 420;
+sun.shadow.camera.left = -220;
+sun.shadow.camera.right = 220;
+sun.shadow.camera.top = 220;
+sun.shadow.camera.bottom = -220;
 scene.add(sun);
 
-const terrain = new THREE.Mesh(
-  new THREE.PlaneGeometry(1200, 1200, 1, 1),
-  new THREE.MeshStandardMaterial({ color: 0x2f5d43, roughness: 0.95, metalness: 0.02 })
+const starsGeometry = new THREE.BufferGeometry();
+const starCount = 2000;
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i += 1) {
+  const radius = 400 + Math.random() * 800;
+  const theta = Math.random() * Math.PI * 2;
+  const y = -120 + Math.random() * 700;
+  starPos[i * 3] = Math.cos(theta) * radius;
+  starPos[i * 3 + 1] = y;
+  starPos[i * 3 + 2] = Math.sin(theta) * radius;
+}
+starsGeometry.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+const stars = new THREE.Points(
+  starsGeometry,
+  new THREE.PointsMaterial({ size: 1.2, color: 0xffffff, transparent: true, opacity: 0.6 })
 );
-terrain.rotation.x = -Math.PI / 2;
-terrain.receiveShadow = true;
-scene.add(terrain);
+scene.add(stars);
 
-const railRoot = new THREE.Group();
-const trainRoot = new THREE.Group();
-scene.add(railRoot);
-scene.add(trainRoot);
+const seedInput = document.querySelector<HTMLInputElement>("#seed-input");
+const nInput = document.querySelector<HTMLInputElement>("#n-input");
+const xyScaleInput = document.querySelector<HTMLInputElement>("#xy-scale-input");
+const zScaleInput = document.querySelector<HTMLInputElement>("#z-scale-input");
+const mountainAmpInput = document.querySelector<HTMLInputElement>("#mountain-amp-input");
+const cliffAmpInput = document.querySelector<HTMLInputElement>("#cliff-amp-input");
+const statusEl = document.querySelector<HTMLDivElement>("#status");
+const islandCountEl = document.querySelector<HTMLSpanElement>("#island-count");
 
-let railLoaded = false;
-let trainLoaded = false;
-let trainAnimator: ReturnType<typeof createTrainAnimator> | null = null;
-let trainSizer: TrainSizer | null = null;
+const WORLD_RADIUS = 420;
+const PADDING = 12;
+const MAX_ATTEMPTS = 200;
+const ISLAND_MIN_Y = 24;
+const ISLAND_MAX_Y = 130;
 
-const scaleInput = document.querySelector<HTMLInputElement>("#train-scale");
-const scaleValue = document.querySelector<HTMLSpanElement>("#train-scale-value");
-let pendingScaleMultiplier = scaleInput ? Number(scaleInput.value) : 1;
+const islandShell = new THREE.MeshStandardMaterial({
+  color: 0x62886e,
+  roughness: 0.92,
+  metalness: 0.04
+});
 
-function setTrainScaleMultiplier(value: number) {
-  pendingScaleMultiplier = value;
-  if (scaleValue) {
-    scaleValue.textContent = `${value.toFixed(2)}x`;
+const islands: PlacedIsland[] = [];
+
+function readNumber(input: HTMLInputElement | null, fallback: number) {
+  if (!input) {
+    return fallback;
   }
-  trainSizer?.setMultiplier(value);
+  const parsed = Number(input.value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-if (scaleInput) {
-  scaleInput.addEventListener("input", () => {
-    setTrainScaleMultiplier(Number(scaleInput.value));
-  });
-  setTrainScaleMultiplier(pendingScaleMultiplier);
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
-const trainMotion = createTrainMotion({
-  startZ: -80,
-  endZ: 80,
-  speed: 14,
-  x: 0,
-  y: 0,
-  heading: 0
-});
-
-const followCamera = createFollowCamera(camera, {
-  distance: 4,
-  height: 11,
-  damping: 5.2,
-  lookAhead: 8,
-  sideOffset: 26,
-  initialZoom: 1,
-  minZoom: 0.55,
-  maxZoom: 20000
-});
-
-function boxIsValid(box: THREE.Box3) {
-  return Number.isFinite(box.min.x) && Number.isFinite(box.max.x);
+function readParams(): IslandParams {
+  return {
+    seed: Math.floor(readNumber(seedInput, 4121132)),
+    n: Math.floor(clamp(readNumber(nInput, 160), 64, 280)),
+    xyScale: clamp(readNumber(xyScaleInput, 32), 8, 96),
+    zScale: clamp(readNumber(zScaleInput, 10), 2, 40),
+    mountainAmp: clamp(readNumber(mountainAmpInput, 0.58), 0.05, 1.2),
+    cliffAmp: clamp(readNumber(cliffAmpInput, 0.07), 0, 0.6),
+    namePrefix: "FloatingIsland"
+  };
 }
 
-function alignTrainToRail() {
-  if (!railLoaded || !trainLoaded) {
+function setStatus(text: string) {
+  if (statusEl) {
+    statusEl.textContent = text;
+  }
+}
+
+function updateIslandCount() {
+  if (islandCountEl) {
+    islandCountEl.textContent = String(islands.length);
+  }
+}
+
+function createIslandMaterials(seed: number) {
+  const hue = ((seed % 360) + 360) % 360;
+  const top = islandShell.clone();
+  top.color = new THREE.Color(`hsl(${hue}, 24%, 42%)`);
+  return top;
+}
+
+function spawnIsland() {
+  const params = readParams();
+  const data = createIslandData(params);
+  const { geometry, approxRadius } = buildIslandGeometry(data);
+  const pos = findSpawnPosition(islands, approxRadius, WORLD_RADIUS, PADDING, MAX_ATTEMPTS);
+  if (!pos) {
+    geometry.dispose();
+    setStatus("No free space left for a non-overlapping island.");
     return;
   }
 
-  const railBox = new THREE.Box3().setFromObject(railRoot);
-  const trainBox = new THREE.Box3().setFromObject(trainRoot);
+  const material = createIslandMaterials(params.seed + islands.length * 17);
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = `${params.namePrefix}_${islands.length + 1}`;
 
-  if (!boxIsValid(railBox) || !boxIsValid(trainBox)) {
-    return;
-  }
+  const y = ISLAND_MIN_Y + Math.random() * (ISLAND_MAX_Y - ISLAND_MIN_Y);
+  mesh.position.set(pos.x, y, pos.z);
+  scene.add(mesh);
 
-  const railLength = railBox.max.z - railBox.min.z;
-  if (railLength > 2) {
-    const padding = Math.max(2, railLength * 0.04);
-    const startZ = railBox.min.z + padding;
-    const endZ = railBox.max.z - padding;
-    trainMotion.setBounds(startZ, endZ);
-  }
-
-  const trainY = railBox.max.y - trainBox.min.y;
-  trainMotion.setBasePosition(0, trainY);
-
-  const state = trainMotion.getState();
-  trainRoot.position.set(state.position.x, state.position.y, state.position.z);
+  islands.push({ x: pos.x, z: pos.z, radius: approxRadius });
+  updateIslandCount();
+  setStatus(`${mesh.name} spawned (N=${params.n}, seed=${params.seed}).`);
 }
-
-void loadRailModel()
-  .then((rail) => {
-    railRoot.add(rail);
-    railLoaded = true;
-    alignTrainToRail();
-  })
-  .catch((error) => {
-    console.error("Failed to load railway.glb", error);
-  });
-
-void loadTrainModel()
-  .then(({ model, animations }) => {
-    trainRoot.add(model);
-    trainAnimator = createTrainAnimator(model, animations);
-    trainSizer = createTrainSizer(model, {
-      minMultiplier: scaleInput ? Number(scaleInput.min) : 0.2,
-      maxMultiplier: scaleInput ? Number(scaleInput.max) : 5
-    });
-    trainSizer.setMultiplier(pendingScaleMultiplier);
-    trainLoaded = true;
-    alignTrainToRail();
-  })
-  .catch((error) => {
-    console.error("Failed to load the_polar_express_locomotive.glb", error);
-  });
 
 window.__THREE_DRIVE__ = {
-  getTrainState: () => trainMotion.getState(),
-  isTrainLoaded: () => trainLoaded,
-  isRailLoaded: () => railLoaded,
-  getCameraZoom: () => followCamera.getZoom()
+  getIslandCount: () => islands.length,
+  getCameraDistance: () => camera.position.distanceTo(controls.target)
 };
 
-renderer.domElement.addEventListener(
-  "wheel",
-  (event) => {
-    event.preventDefault();
-    // Scroll up zooms in (smaller zoom), scroll down zooms out.
-    followCamera.zoomBy(event.deltaY * 0.03);
-  },
-  { passive: false }
-);
+renderer.domElement.addEventListener("pointerdown", () => {
+  spawnIsland();
+});
 
 const clock = new THREE.Clock();
 
 function renderFrame() {
   requestAnimationFrame(renderFrame);
 
-  const dt = Math.min(clock.getDelta(), 1 / 30);
-  const state = trainMotion.update(dt);
-
-  trainRoot.position.set(state.position.x, state.position.y, state.position.z);
-  trainRoot.rotation.y = state.heading;
-
-  trainAnimator?.update(dt, state.speed);
-  followCamera.update(state, dt);
+  clock.getDelta();
+  controls.update();
   renderer.render(scene, camera);
 }
 
+updateIslandCount();
+setStatus("Click empty canvas space to spawn a floating island.");
 renderFrame();
 
 window.addEventListener("resize", () => {

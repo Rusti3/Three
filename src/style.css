@@ -33,7 +33,7 @@ body {
 }
 
 .hud p {
-  margin: 0;
+  margin: 0 0 4px;
   font-size: 14px;
 }
 
@@ -43,7 +43,7 @@ body {
   right: 12px;
   display: grid;
   gap: 8px;
-  min-width: 180px;
+  min-width: 230px;
   background: rgba(10, 13, 24, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
@@ -51,14 +51,27 @@ body {
 }
 
 .controls-right label {
-  font-size: 13px;
+  font-size: 12px;
+  opacity: 0.85;
+  margin-top: 4px;
 }
 
-.controls-right input[type="range"] {
+.controls-right input[type="number"] {
   width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e6e9ef;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 8px;
 }
 
 .controls-right__value {
   font-size: 12px;
   opacity: 0.85;
+}
+
+.controls-right__status {
+  font-size: 12px;
+  color: #cfe6ff;
+  min-height: 2.6em;
 }
