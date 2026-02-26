@@ -7,9 +7,9 @@ import { chooseAdaptiveResolution } from "./game/islandLod";
 import { buildIslandGeometry } from "./game/islandMesh";
 import { findSpawnPosition } from "./game/islandPlacement";
 import { randomIslandParamsFromRanges } from "./game/islandRandomParams";
-import { buildAlternatingRailSegments } from "./game/railBuilder";
+import { buildRailBetween, type RailPieces } from "./game/railBuilder";
 import { buildMstEdges, type RailNode } from "./game/railGraph";
-import { loadRailKit, type RailKit } from "./game/railKit";
+import { loadRailPieces } from "./game/railKit";
 import type { PlacedIsland } from "./game/islandTypes";
 
 declare global {
@@ -109,7 +109,7 @@ const islandShell = new THREE.MeshStandardMaterial({
 
 const islands: PlacedIsland[] = [];
 const railNodes: Array<RailNode & { radius: number }> = [];
-let railKit: RailKit | null = null;
+let railPieces: RailPieces | null = null;
 let railSegmentCount = 0;
 
 function readNumber(input: HTMLInputElement | null, fallback: number) {
@@ -179,7 +179,7 @@ function clearRails() {
 
 function rebuildRails() {
   clearRails();
-  if (!railKit || railNodes.length < 2) {
+  if (!railPieces || railNodes.length < 2) {
     return;
   }
 
@@ -194,20 +194,21 @@ function rebuildRails() {
     }
 
     const distance = Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z);
-    const maxOffset = Math.max(2, distance * 0.45);
-    const desiredOffset = Math.min(a.radius, b.radius) * 0.35;
-    const endOffset = Math.min(maxOffset, Math.max(4, desiredOffset));
+    const dir = new THREE.Vector3().subVectors(b.position, a.position);
+    if (distance <= 1e-3) {
+      continue;
+    }
+    const normalized = dir.clone().normalize();
+    const startOffset = Math.min(distance * 0.3, Math.max(1, a.radius * 0.4));
+    const endOffset = Math.min(distance * 0.3, Math.max(1, b.radius * 0.4));
+    const startPoint = a.position.clone().add(normalized.clone().multiplyScalar(startOffset));
+    const endPoint = b.position.clone().sub(normalized.clone().multiplyScalar(endOffset));
 
-    const group = buildAlternatingRailSegments(
-      {
-        section4: railKit.section4,
-        section3: railKit.section3,
-        section4Length: railKit.section4Length,
-        section3Length: railKit.section3Length
-      },
-      a.position,
-      b.position,
-      { endOffset }
+    const group = buildRailBetween(
+      railPieces,
+      startPoint,
+      endPoint,
+      { minOffset: 2 }
     );
 
     railSegmentCount += group.children.length;
@@ -260,11 +261,11 @@ window.__THREE_DRIVE__ = {
   getRailSegmentCount: () => railSegmentCount
 };
 
-void loadRailKit("РЕЛЬСЫ.glb")
-  .then((kit) => {
-    railKit = kit;
+void loadRailPieces("РЕЛЬСыконечные.glb", "РЕЛЬСыосновные.glb")
+  .then((pieces) => {
+    railPieces = pieces;
     rebuildRails();
-    setStatus("Rail kit loaded. Click canvas to spawn islands and auto-build rails.");
+    setStatus("Rail kit loaded (start+main). Click canvas to spawn islands and auto-build rails.");
   })
   .catch((error) => {
     console.error("Failed to load rail kit", error);
