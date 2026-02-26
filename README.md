@@ -61,6 +61,21 @@ What changed for the user:
 - Rail lines no longer float at one averaged altitude.
 - Each connection now starts at the first island surface height and ends at the second island surface height.
 
+### v0.4.3 (2026-02-26)
+
+What was done:
+- Added rail piece tilt based on start/end height difference, not only per-piece Y offset.
+- Switched segment orientation to full 3D direction alignment (yaw + pitch).
+- Adjusted XZ spacing by slope factor so section joints stay coherent on inclined lines.
+- Extended railBuilder unit test to assert non-zero pitch when endpoints have different heights.
+
+Why these functions were added:
+- To remove visible “stair-step” artifacts and make each rail edge behave as a continuous inclined line.
+
+What changed for the user:
+- Rails now visually incline between islands with a single controlled angle.
+- Connections look smoother and less segmented on vertical differences.
+
 ### v0.4.1 (2026-02-26)
 
 What was done:

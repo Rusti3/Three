@@ -46,5 +46,6 @@ describe("rail builder", () => {
     const startY = group.children[0].position.y;
     const endY = group.children[group.children.length - 1].position.y;
     expect(endY).toBeGreaterThan(startY);
+    expect(Math.abs(group.children[0].rotation.x)).toBeGreaterThan(0.01);
   });
 });
