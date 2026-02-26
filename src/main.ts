@@ -21,8 +21,10 @@ declare global {
     __THREE_DRIVE__?: {
       getIslandCount: () => number;
       getCameraDistance: () => number;
+      getCameraPosition: () => { x: number; y: number; z: number };
       getRailSegmentCount: () => number;
       isTrainLoaded: () => boolean;
+      isCameraFollowEnabled: () => boolean;
       getTrainPosition: () => { x: number; y: number; z: number };
       getTrainScale: () => number;
     };
@@ -98,6 +100,7 @@ const xyScaleInput = document.querySelector<HTMLInputElement>("#xy-scale-input")
 const zScaleInput = document.querySelector<HTMLInputElement>("#z-scale-input");
 const mountainAmpInput = document.querySelector<HTMLInputElement>("#mountain-amp-input");
 const cliffAmpInput = document.querySelector<HTMLInputElement>("#cliff-amp-input");
+const followCameraButton = document.querySelector<HTMLButtonElement>("#camera-follow-toggle");
 const statusEl = document.querySelector<HTMLDivElement>("#status");
 const islandCountEl = document.querySelector<HTMLSpanElement>("#island-count");
 
@@ -124,6 +127,11 @@ const railEdgeSegments: RailEdgeSegment[] = [];
 let trainMotion: TrainMotionController | null = null;
 let trainLoaded = false;
 const trainScale = 1;
+let cameraFollowEnabled = false;
+const followCameraOffset = new THREE.Vector3(0, 9, -22);
+const followTargetOffset = new THREE.Vector3(0, 2, 10);
+const desiredCameraPosition = new THREE.Vector3();
+const desiredTargetPosition = new THREE.Vector3();
 
 function readNumber(input: HTMLInputElement | null, fallback: number) {
   if (!input) {
@@ -183,6 +191,19 @@ function createIslandMaterials(seed: number) {
   const top = islandShell.clone();
   top.color = new THREE.Color(`hsl(${hue}, 24%, 42%)`);
   return top;
+}
+
+function updateFollowCameraButton() {
+  if (!followCameraButton) {
+    return;
+  }
+  followCameraButton.textContent = cameraFollowEnabled ? "Camera Follow: ON" : "Camera Follow: OFF";
+}
+
+function setCameraFollowEnabled(value: boolean) {
+  cameraFollowEnabled = value;
+  controls.enabled = !cameraFollowEnabled;
+  updateFollowCameraButton();
 }
 
 function clearRailMeshes() {
@@ -291,8 +312,14 @@ function spawnIsland() {
 window.__THREE_DRIVE__ = {
   getIslandCount: () => islands.length,
   getCameraDistance: () => camera.position.distanceTo(controls.target),
+  getCameraPosition: () => ({
+    x: camera.position.x,
+    y: camera.position.y,
+    z: camera.position.z
+  }),
   getRailSegmentCount: () => railSegmentCount,
   isTrainLoaded: () => trainLoaded,
+  isCameraFollowEnabled: () => cameraFollowEnabled,
   getTrainPosition: () => ({
     x: trainRoot.position.x,
     y: trainRoot.position.y,
@@ -333,18 +360,42 @@ renderer.domElement.addEventListener("pointerdown", () => {
   spawnIsland();
 });
 
+followCameraButton?.addEventListener("click", () => {
+  if (!trainLoaded || !trainMotion) {
+    setStatus("Train is not ready yet.");
+    return;
+  }
+  setCameraFollowEnabled(!cameraFollowEnabled);
+  setStatus(cameraFollowEnabled ? "Camera follow enabled." : "Camera follow disabled.");
+});
+
 const clock = new THREE.Clock();
 
 function renderFrame() {
   requestAnimationFrame(renderFrame);
 
   const dt = Math.min(clock.getDelta(), 1 / 30);
-  controls.update();
   trainMotion?.update(dt);
+  if (cameraFollowEnabled && trainLoaded) {
+    const followAlpha = 1 - Math.exp(-6 * dt);
+    desiredCameraPosition
+      .copy(followCameraOffset)
+      .applyQuaternion(trainRoot.quaternion)
+      .add(trainRoot.position);
+    desiredTargetPosition
+      .copy(followTargetOffset)
+      .applyQuaternion(trainRoot.quaternion)
+      .add(trainRoot.position);
+
+    camera.position.lerp(desiredCameraPosition, followAlpha);
+    controls.target.lerp(desiredTargetPosition, followAlpha);
+  }
+  controls.update();
   renderer.render(scene, camera);
 }
 
 updateIslandCount();
+updateFollowCameraButton();
 setStatus("Click empty canvas space to spawn a floating island.");
 renderFrame();
 

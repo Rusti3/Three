@@ -22,6 +22,7 @@ npm run test:e2e
 - Mouse drag: orbit camera.
 - Mouse wheel: zoom in/out.
 - Right mouse drag: pan camera.
+- `Camera Follow` button: bind/unbind camera to moving train.
 - On each click, all island generation parameters are randomized in safe ranges.
 
 ## Parameters Per Island
@@ -45,6 +46,21 @@ Default values:
 - `CLIFF_AMP = 0.07`
 
 ## Version Summary
+
+### v0.5.6 (2026-02-26)
+
+What was done:
+- Added a new `Camera Follow` toggle button in the right control panel.
+- Implemented follow-camera mode that locks OrbitControls input and smoothly tracks the train from a chase offset.
+- Added debug API methods for camera position and follow state.
+- Extended e2e smoke test to verify button visibility, follow-state toggle, and real camera movement while follow mode is enabled.
+
+Why these functions were added:
+- To let users quickly attach the camera to the train and watch movement automatically.
+
+What changed for the user:
+- One click enables train-follow camera, second click disables it.
+- In follow mode, camera automatically tracks train position/direction.
 
 ### v0.5.5 (2026-02-26)
 

@@ -5,8 +5,10 @@ declare global {
     __THREE_DRIVE__?: {
       getIslandCount: () => number;
       getCameraDistance: () => number;
+      getCameraPosition: () => { x: number; y: number; z: number };
       getRailSegmentCount: () => number;
       isTrainLoaded: () => boolean;
+      isCameraFollowEnabled: () => boolean;
       getTrainPosition: () => { x: number; y: number; z: number };
       getTrainScale: () => number;
     };
@@ -48,6 +50,37 @@ test("renders island scene, creates islands on click and supports camera zoom", 
     (trainAfter?.z ?? 0) - (trainBefore?.z ?? 0)
   );
   expect(delta).toBeGreaterThan(0.05);
+
+  const followButton = page.locator("#camera-follow-toggle");
+  await expect(followButton).toBeVisible();
+
+  const cameraStillBefore = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraPosition());
+  await page.waitForTimeout(500);
+  const cameraStillAfter = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraPosition());
+  const stillDelta = Math.hypot(
+    (cameraStillAfter?.x ?? 0) - (cameraStillBefore?.x ?? 0),
+    (cameraStillAfter?.y ?? 0) - (cameraStillBefore?.y ?? 0),
+    (cameraStillAfter?.z ?? 0) - (cameraStillBefore?.z ?? 0)
+  );
+  expect(stillDelta).toBeLessThan(0.1);
+
+  await followButton.click();
+  const followEnabled = await page.evaluate(() => window.__THREE_DRIVE__?.isCameraFollowEnabled() ?? false);
+  expect(followEnabled).toBe(true);
+
+  const cameraFollowBefore = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraPosition());
+  await page.waitForTimeout(700);
+  const cameraFollowAfter = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraPosition());
+  const followDelta = Math.hypot(
+    (cameraFollowAfter?.x ?? 0) - (cameraFollowBefore?.x ?? 0),
+    (cameraFollowAfter?.y ?? 0) - (cameraFollowBefore?.y ?? 0),
+    (cameraFollowAfter?.z ?? 0) - (cameraFollowBefore?.z ?? 0)
+  );
+  expect(followDelta).toBeGreaterThan(0.15);
+
+  await followButton.click();
+  const followDisabled = await page.evaluate(() => window.__THREE_DRIVE__?.isCameraFollowEnabled() ?? true);
+  expect(followDisabled).toBe(false);
 
   await canvas.click();
   await page.waitForTimeout(350);
