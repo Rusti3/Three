@@ -11,7 +11,7 @@ function makeSection(length: number) {
 }
 
 describe("rail builder", () => {
-  it("places start, repeated main, and end segments along a line", () => {
+  it("places start, repeated main, and end segments in expected order", () => {
     const kit: RailPieces = {
       start: makeSection(3),
       main: makeSection(5),
@@ -27,9 +27,14 @@ describe("rail builder", () => {
 
     expect(group.children.length).toBeGreaterThan(2);
     expect(group.children[0].uuid).not.toBe(group.children[1].uuid);
+    expect(group.children[0].userData.sectionType).toBe("start");
+    expect(group.children[group.children.length - 1].userData.sectionType).toBe("end");
+    for (let i = 1; i < group.children.length - 1; i += 1) {
+      expect(group.children[i].userData.sectionType).toBe("main");
+    }
   });
 
-  it("accounts for start/end heights without pitch rotation", () => {
+  it("keeps every segment on one 3D straight line and same direction", () => {
     const kit: RailPieces = {
       start: makeSection(3),
       main: makeSection(5),
@@ -38,19 +43,25 @@ describe("rail builder", () => {
       endLength: 3
     };
 
-    const start = new THREE.Vector3(0, 8, 0);
-    const end = new THREE.Vector3(40, 24, 0);
+    const start = new THREE.Vector3(2, 8, -4);
+    const end = new THREE.Vector3(28, 24, 15);
     const group = buildRailBetween(kit, start, end, { minOffset: 0 });
+    const direction = end.clone().sub(start).normalize();
+    const expectedQ = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 0, 1),
+      direction
+    );
 
     expect(group.children.length).toBeGreaterThanOrEqual(3);
-    const startY = group.children[0].position.y;
-    const endY = group.children[group.children.length - 1].position.y;
-    expect(endY).toBeGreaterThan(startY);
-    expect(Math.abs(group.children[0].rotation.x)).toBeLessThan(1e-6);
-    expect(Math.abs(group.children[0].rotation.z)).toBeLessThan(1e-6);
+    for (const piece of group.children) {
+      const rel = piece.position.clone().sub(start);
+      const distanceToLine = rel.clone().cross(direction).length();
+      expect(distanceToLine).toBeLessThan(1e-4);
+      expect(piece.quaternion.angleTo(expectedQ)).toBeLessThan(1e-4);
+    }
   });
 
-  it("rotates rails only on Y axis toward the destination", () => {
+  it("uses compact filling so neighbors do not leave gaps", () => {
     const kit: RailPieces = {
       start: makeSection(3),
       main: makeSection(5),
@@ -60,16 +71,35 @@ describe("rail builder", () => {
     };
 
     const start = new THREE.Vector3(0, 10, 0);
-    const end = new THREE.Vector3(20, 14, 20);
+    const end = new THREE.Vector3(34, 10, 0);
     const group = buildRailBetween(kit, start, end, { minOffset: 0 });
+    const direction = end.clone().sub(start).normalize();
+    const items = group.children.map((piece) => {
+      const s = piece.position.clone().sub(start).dot(direction);
+      const type = String(piece.userData.sectionType);
+      const length = type === "main" ? kit.mainLength : kit.startLength;
+      return { s, length };
+    });
 
-    expect(group.children.length).toBeGreaterThanOrEqual(3);
-    expect(Math.abs(group.rotation.y)).toBeLessThan(1e-6);
-
-    for (const piece of group.children) {
-      expect(Math.abs(piece.rotation.y)).toBeGreaterThan(0.1);
-      expect(Math.abs(piece.rotation.x)).toBeLessThan(1e-6);
-      expect(Math.abs(piece.rotation.z)).toBeLessThan(1e-6);
+    items.sort((a, b) => a.s - b.s);
+    for (let i = 0; i < items.length - 1; i += 1) {
+      const spacing = items[i + 1].s - items[i].s;
+      const maxNoGapSpacing = items[i].length * 0.5 + items[i + 1].length * 0.5 + 1e-6;
+      expect(spacing).toBeLessThanOrEqual(maxNoGapSpacing);
     }
+  });
+
+  it("returns empty group when edge is too short for start and end anchors", () => {
+    const kit: RailPieces = {
+      start: makeSection(3),
+      main: makeSection(5),
+      startLength: 3,
+      mainLength: 5,
+      endLength: 3
+    };
+    const group = buildRailBetween(kit, new THREE.Vector3(0, 0, 0), new THREE.Vector3(5, 0, 0), {
+      minOffset: 0
+    });
+    expect(group.children.length).toBe(0);
   });
 });

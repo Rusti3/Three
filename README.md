@@ -46,6 +46,22 @@ Default values:
 
 ## Version Summary
 
+### v0.5.5 (2026-02-26)
+
+What was done:
+- Reworked rail path construction to a true 3D straight line from island top point to island top point.
+- Switched segment placement from XZ+interpolated-Y to distance-along-3D-vector placement.
+- Applied one shared 3D direction quaternion to all start/main/end segments so the whole link is geometrically one straight rail line.
+- Added compact middle fill (`ceil` + uniform spacing) to avoid visible tail gaps before the end anchor.
+- Updated railBuilder tests to validate 3D collinearity, shared direction, no-gap neighbor spacing, and short-edge fallback.
+
+Why these functions were added:
+- To remove the stepped/fragmented look and make each island-to-island link visually continuous and straight in 3D.
+
+What changed for the user:
+- Rail links now look like one continuous straight rail from one island peak to another.
+- End of the link no longer leaves obvious unfilled gaps before the final anchor piece.
+
 ### v0.5.4 (2026-02-26)
 
 What was done:
