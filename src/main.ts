@@ -7,6 +7,9 @@ import { chooseAdaptiveResolution } from "./game/islandLod";
 import { buildIslandGeometry } from "./game/islandMesh";
 import { findSpawnPosition } from "./game/islandPlacement";
 import { randomIslandParamsFromRanges } from "./game/islandRandomParams";
+import { buildAlternatingRailSegments } from "./game/railBuilder";
+import { buildMstEdges, type RailNode } from "./game/railGraph";
+import { loadRailKit, type RailKit } from "./game/railKit";
 import type { PlacedIsland } from "./game/islandTypes";
 
 declare global {
@@ -14,6 +17,7 @@ declare global {
     __THREE_DRIVE__?: {
       getIslandCount: () => number;
       getCameraDistance: () => number;
+      getRailSegmentCount: () => number;
     };
   }
 }
@@ -76,6 +80,8 @@ const stars = new THREE.Points(
   new THREE.PointsMaterial({ size: 1.2, color: 0xffffff, transparent: true, opacity: 0.6 })
 );
 scene.add(stars);
+const railsRoot = new THREE.Group();
+scene.add(railsRoot);
 
 const seedInput = document.querySelector<HTMLInputElement>("#seed-input");
 const nInput = document.querySelector<HTMLInputElement>("#n-input");
@@ -102,6 +108,9 @@ const islandShell = new THREE.MeshStandardMaterial({
 });
 
 const islands: PlacedIsland[] = [];
+const railNodes: Array<RailNode & { radius: number }> = [];
+let railKit: RailKit | null = null;
+let railSegmentCount = 0;
 
 function readNumber(input: HTMLInputElement | null, fallback: number) {
   if (!input) {
@@ -163,6 +172,49 @@ function createIslandMaterials(seed: number) {
   return top;
 }
 
+function clearRails() {
+  railsRoot.clear();
+  railSegmentCount = 0;
+}
+
+function rebuildRails() {
+  clearRails();
+  if (!railKit || railNodes.length < 2) {
+    return;
+  }
+
+  const byId = new Map(railNodes.map((n) => [n.id, n]));
+  const edges = buildMstEdges(railNodes);
+
+  for (const edge of edges) {
+    const a = byId.get(edge.fromId);
+    const b = byId.get(edge.toId);
+    if (!a || !b) {
+      continue;
+    }
+
+    const distance = Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z);
+    const maxOffset = Math.max(2, distance * 0.45);
+    const desiredOffset = Math.min(a.radius, b.radius) * 0.35;
+    const endOffset = Math.min(maxOffset, Math.max(4, desiredOffset));
+
+    const group = buildAlternatingRailSegments(
+      {
+        section4: railKit.section4,
+        section3: railKit.section3,
+        section4Length: railKit.section4Length,
+        section3Length: railKit.section3Length
+      },
+      a.position,
+      b.position,
+      { endOffset }
+    );
+
+    railSegmentCount += group.children.length;
+    railsRoot.add(group);
+  }
+}
+
 function spawnIsland() {
   randomizeInputsForNextIsland();
   const params = readParams();
@@ -188,15 +240,36 @@ function spawnIsland() {
   scene.add(mesh);
 
   islands.push({ x: pos.x, z: pos.z, radius: approxRadius });
+  const islandId = `${params.namePrefix}_${islands.length}`;
+  railNodes.push({
+    id: islandId,
+    position: mesh.position.clone(),
+    radius: approxRadius
+  });
+  rebuildRails();
   updateIslandCount();
   const lodInfo = adaptiveN !== params.n ? `, adaptiveN=${adaptiveN}` : "";
-  setStatus(`${mesh.name} spawned (N=${params.n}${lodInfo}, seed=${params.seed}).`);
+  setStatus(
+    `${mesh.name} spawned (N=${params.n}${lodInfo}, seed=${params.seed}). Rails: ${railSegmentCount} segments.`
+  );
 }
 
 window.__THREE_DRIVE__ = {
   getIslandCount: () => islands.length,
-  getCameraDistance: () => camera.position.distanceTo(controls.target)
+  getCameraDistance: () => camera.position.distanceTo(controls.target),
+  getRailSegmentCount: () => railSegmentCount
 };
+
+void loadRailKit("РЕЛЬСЫ.glb")
+  .then((kit) => {
+    railKit = kit;
+    rebuildRails();
+    setStatus("Rail kit loaded. Click canvas to spawn islands and auto-build rails.");
+  })
+  .catch((error) => {
+    console.error("Failed to load rail kit", error);
+    setStatus("Rail model failed to load. Islands still work, rails disabled.");
+  });
 
 renderer.domElement.addEventListener("pointerdown", () => {
   spawnIsland();

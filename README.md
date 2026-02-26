@@ -46,6 +46,28 @@ Default values:
 
 ## Version Summary
 
+### v0.4.0 (2026-02-26)
+
+What was done:
+- Added automatic rail generation between islands using `РЕЛЬСЫ.glb`.
+- Implemented MST topology so all islands become connected with minimal number of links.
+- Added full rail network rebuild after each new island spawn.
+- Implemented strict alternating pattern of rail pieces: `4 sleepers -> 3 sleepers -> 4 -> 3 ...`.
+- Added rail modules and tests:
+  - `railGraph` for MST edge building,
+  - `railBuilder` for alternating segment placement,
+  - `railKit` for extracting 4/3 sleeper sections from GLB.
+- Extended debug API and e2e smoke to verify rail segments appear after the second island.
+
+Why these functions were added:
+- To automatically connect generated islands into one navigable rail network.
+- To enforce your required assembly rule of alternating 4-sleeper and 3-sleeper sections.
+
+What changed for the user:
+- After islands spawn, rails now appear automatically between them.
+- Rail lines are rebuilt dynamically when new islands are added.
+- Section sequence on each line follows `4-3-4-3...` pattern.
+
 ### v0.3.3 (2026-02-26)
 
 What was done:

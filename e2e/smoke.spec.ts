@@ -5,6 +5,7 @@ declare global {
     __THREE_DRIVE__?: {
       getIslandCount: () => number;
       getCameraDistance: () => number;
+      getRailSegmentCount: () => number;
     };
   }
 }
@@ -20,6 +21,11 @@ test("renders island scene, creates islands on click and supports camera zoom", 
   await page.waitForTimeout(200);
   const afterCount = await page.evaluate(() => window.__THREE_DRIVE__?.getIslandCount() ?? 0);
   expect(afterCount).toBeGreaterThan(beforeCount);
+
+  await canvas.click();
+  await page.waitForTimeout(300);
+  const railSegments = await page.evaluate(() => window.__THREE_DRIVE__?.getRailSegmentCount() ?? 0);
+  expect(railSegments).toBeGreaterThan(0);
 
   await canvas.hover();
   const distBefore = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraDistance() ?? 0);
