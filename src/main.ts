@@ -108,9 +108,11 @@ const islandShell = new THREE.MeshStandardMaterial({
 });
 
 const islands: PlacedIsland[] = [];
-const railNodes: Array<RailNode & { radius: number }> = [];
+const railNodes: Array<RailNode & { radius: number; mesh: THREE.Mesh }> = [];
 let railPieces: RailPieces | null = null;
 let railSegmentCount = 0;
+const railHeightRaycaster = new THREE.Raycaster();
+const downDirection = new THREE.Vector3(0, -1, 0);
 
 function readNumber(input: HTMLInputElement | null, fallback: number) {
   if (!input) {
@@ -177,6 +179,17 @@ function clearRails() {
   railSegmentCount = 0;
 }
 
+function getIslandSurfaceY(node: RailNode & { radius: number; mesh: THREE.Mesh }, x: number, z: number) {
+  const rayOriginY = node.position.y + 220;
+  railHeightRaycaster.set(new THREE.Vector3(x, rayOriginY, z), downDirection);
+  const hits = railHeightRaycaster.intersectObject(node.mesh, false);
+  if (hits.length > 0) {
+    return hits[0].point.y + 0.04;
+  }
+  const box = new THREE.Box3().setFromObject(node.mesh);
+  return box.max.y + 0.04;
+}
+
 function rebuildRails() {
   clearRails();
   if (!railPieces || railNodes.length < 2) {
@@ -204,12 +217,10 @@ function rebuildRails() {
     const startPoint = a.position.clone().add(normalized.clone().multiplyScalar(startOffset));
     const endPoint = b.position.clone().sub(normalized.clone().multiplyScalar(endOffset));
 
-    const group = buildRailBetween(
-      railPieces,
-      startPoint,
-      endPoint,
-      { minOffset: 2 }
-    );
+    startPoint.y = getIslandSurfaceY(a, startPoint.x, startPoint.z);
+    endPoint.y = getIslandSurfaceY(b, endPoint.x, endPoint.z);
+
+    const group = buildRailBetween(railPieces, startPoint, endPoint, { minOffset: 0.2 });
 
     railSegmentCount += group.children.length;
     railsRoot.add(group);
@@ -245,7 +256,8 @@ function spawnIsland() {
   railNodes.push({
     id: islandId,
     position: mesh.position.clone(),
-    radius: approxRadius
+    radius: approxRadius,
+    mesh
   });
   rebuildRails();
   updateIslandCount();

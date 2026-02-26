@@ -28,4 +28,23 @@ describe("rail builder", () => {
     expect(group.children.length).toBeGreaterThan(2);
     expect(group.children[0].uuid).not.toBe(group.children[1].uuid);
   });
+
+  it("accounts for start/end heights by applying vertical slope", () => {
+    const kit: RailPieces = {
+      start: makeSection(3),
+      main: makeSection(5),
+      startLength: 3,
+      mainLength: 5,
+      endLength: 3
+    };
+
+    const start = new THREE.Vector3(0, 8, 0);
+    const end = new THREE.Vector3(40, 24, 0);
+    const group = buildRailBetween(kit, start, end, { minOffset: 0 });
+
+    expect(group.children.length).toBeGreaterThanOrEqual(3);
+    const startY = group.children[0].position.y;
+    const endY = group.children[group.children.length - 1].position.y;
+    expect(endY).toBeGreaterThan(startY);
+  });
 });

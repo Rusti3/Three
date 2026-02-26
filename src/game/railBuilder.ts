@@ -48,6 +48,10 @@ function distanceXZ(a: THREE.Vector3, b: THREE.Vector3) {
   return Math.hypot(a.x - b.x, a.z - b.z);
 }
 
+function pointAtDistanceXZ(from: THREE.Vector3, dirXZ: THREE.Vector3, distance: number, y: number) {
+  return new THREE.Vector3(from.x + dirXZ.x * distance, y, from.z + dirXZ.z * distance);
+}
+
 export function buildRailBetween(
   pieces: RailPieces,
   start: THREE.Vector3,
@@ -65,36 +69,48 @@ export function buildRailBetween(
 
   dir.normalize();
   const yaw = Math.atan2(dir.x, dir.z);
-  const y = (start.y + end.y) * 0.5;
   const offsets = Math.max(options.minOffset, 0);
-  const startCenter = start.clone().add(dir.clone().multiplyScalar(pieces.startLength * 0.5 + offsets));
-  const endCenter = end.clone().sub(dir.clone().multiplyScalar(pieces.endLength * 0.5 + offsets));
-  const usable = Math.max(0, startCenter.distanceTo(endCenter));
+  const startBeginS = offsets;
+  const startCenterS = startBeginS + pieces.startLength * 0.5;
+  const startEndS = startBeginS + pieces.startLength;
+  const endEndS = totalDistance - offsets;
+  const endCenterS = endEndS - pieces.endLength * 0.5;
+  const endBeginS = endEndS - pieces.endLength;
+
+  if (endBeginS <= startEndS) {
+    return group;
+  }
+
+  const yAtS = (s: number) => {
+    const t = Math.max(0, Math.min(1, s / totalDistance));
+    return start.y + (end.y - start.y) * t;
+  };
 
   // add start piece
   const startPiece = pieces.start.clone(true);
   startPiece.rotation.y = yaw;
-  startPiece.position.copy(startCenter);
-  startPiece.position.y = y;
+  startPiece.position.copy(pointAtDistanceXZ(start, dir, startCenterS, yAtS(startCenterS)));
+  startPiece.userData.sectionType = "start";
   applyShadows(startPiece);
   group.add(startPiece);
 
-  const mainCount = Math.floor(usable / pieces.mainLength);
+  const middleLength = Math.max(0, endBeginS - startEndS);
+  const mainCount = Math.floor(middleLength / pieces.mainLength);
   for (let i = 0; i < mainCount; i += 1) {
-    const offsetScalar = pieces.startLength * 0.5 + pieces.mainLength * (i + 0.5) + offsets;
-    const position = start.clone().add(dir.clone().multiplyScalar(offsetScalar));
+    const centerS = startEndS + pieces.mainLength * (i + 0.5);
+    const position = pointAtDistanceXZ(start, dir, centerS, yAtS(centerS));
     const mainPiece = pieces.main.clone(true);
     mainPiece.position.copy(position);
-    mainPiece.position.y = y;
     mainPiece.rotation.y = yaw;
+    mainPiece.userData.sectionType = "main";
     applyShadows(mainPiece);
     group.add(mainPiece);
   }
 
   const endPiece = pieces.start.clone(true);
   endPiece.rotation.y = yaw;
-  endPiece.position.copy(endCenter);
-  endPiece.position.y = y;
+  endPiece.position.copy(pointAtDistanceXZ(start, dir, endCenterS, yAtS(endCenterS)));
+  endPiece.userData.sectionType = "end";
   applyShadows(endPiece);
   group.add(endPiece);
 
