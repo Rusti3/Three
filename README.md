@@ -22,6 +22,7 @@ npm run test:e2e
 - Mouse drag: orbit camera.
 - Mouse wheel: zoom in/out.
 - Right mouse drag: pan camera.
+- On each click, all island generation parameters are randomized in safe ranges.
 
 ## Parameters Per Island
 
@@ -44,6 +45,20 @@ Default values:
 - `CLIFF_AMP = 0.07`
 
 ## Version Summary
+
+### v0.3.3 (2026-02-26)
+
+What was done:
+- Added automatic randomization of all generation parameters on every canvas click.
+- UI fields are now updated per click before spawning each island.
+- Added unit tests for random parameter range correctness.
+
+Why these functions were added:
+- To guarantee each new island has a fresh configuration automatically.
+- To keep randomness within practical limits and avoid extreme unstable values.
+
+What changed for the user:
+- You no longer need to edit fields manually for variation; each click randomizes all params and spawns a new island.
 
 ### v0.3.2 (2026-02-26)
 

@@ -6,6 +6,7 @@ import { createIslandData, type IslandParams } from "./game/islandGenerator";
 import { chooseAdaptiveResolution } from "./game/islandLod";
 import { buildIslandGeometry } from "./game/islandMesh";
 import { findSpawnPosition } from "./game/islandPlacement";
+import { randomIslandParamsFromRanges } from "./game/islandRandomParams";
 import type { PlacedIsland } from "./game/islandTypes";
 
 declare global {
@@ -126,6 +127,23 @@ function readParams(): IslandParams {
   };
 }
 
+function setInputValue(input: HTMLInputElement | null, value: number) {
+  if (!input) {
+    return;
+  }
+  input.value = String(value);
+}
+
+function randomizeInputsForNextIsland() {
+  const p = randomIslandParamsFromRanges();
+  setInputValue(seedInput, p.seed);
+  setInputValue(nInput, p.n);
+  setInputValue(xyScaleInput, p.xyScale);
+  setInputValue(zScaleInput, p.zScale);
+  setInputValue(mountainAmpInput, p.mountainAmp);
+  setInputValue(cliffAmpInput, p.cliffAmp);
+}
+
 function setStatus(text: string) {
   if (statusEl) {
     statusEl.textContent = text;
@@ -146,6 +164,7 @@ function createIslandMaterials(seed: number) {
 }
 
 function spawnIsland() {
+  randomizeInputsForNextIsland();
   const params = readParams();
   const adaptiveN = chooseAdaptiveResolution(params.n, islands.length);
   const effectiveParams = { ...params, n: adaptiveN };
