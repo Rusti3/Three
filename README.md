@@ -46,6 +46,36 @@ Default values:
 
 ## Version Summary
 
+### v0.5.0 (2026-02-26)
+
+What was done:
+- Added train loading from `train/source/train.glb`.
+- Added train route generation over the current MST rail network.
+- Added continuous train motion along rail segments with slope-aware orientation.
+- Added debug API for train state (`isTrainLoaded`, train position, train scale).
+- Added unit tests for train path builder and train motion.
+- Extended e2e smoke test to verify train loads and actually moves.
+
+Why these functions were added:
+- To make the train run over the connected rails between islands in runtime.
+
+What changed for the user:
+- A train now appears in scene and moves over generated rail links.
+- The train keeps moving when the rail network rebuilds after new islands spawn.
+
+### v0.5.1 (2026-02-26)
+
+What was done:
+- Switched train asset source to `train/source/train.glb`.
+- Removed automatic train scaling and runtime size adjustments.
+
+Why these functions were added:
+- To preserve the exact artist-authored size of the new train model that already matches rails.
+
+What changed for the user:
+- Train now uses your new model directly.
+- Train scale stays unchanged (no auto-resize).
+
 ### v0.4.2 (2026-02-26)
 
 What was done:

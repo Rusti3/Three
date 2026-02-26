@@ -10,6 +10,9 @@ import { randomIslandParamsFromRanges } from "./game/islandRandomParams";
 import { buildRailBetween, type RailPieces } from "./game/railBuilder";
 import { buildMstEdges, type RailNode } from "./game/railGraph";
 import { loadRailPieces } from "./game/railKit";
+import { createTrainMotion, type TrainMotionController } from "./game/trainMotion";
+import { loadTrainModel } from "./game/trainModel";
+import { buildTraversalPath, type RailEdgeSegment } from "./game/trainPath";
 import type { PlacedIsland } from "./game/islandTypes";
 
 declare global {
@@ -18,6 +21,9 @@ declare global {
       getIslandCount: () => number;
       getCameraDistance: () => number;
       getRailSegmentCount: () => number;
+      isTrainLoaded: () => boolean;
+      getTrainPosition: () => { x: number; y: number; z: number };
+      getTrainScale: () => number;
     };
   }
 }
@@ -82,6 +88,8 @@ const stars = new THREE.Points(
 scene.add(stars);
 const railsRoot = new THREE.Group();
 scene.add(railsRoot);
+const trainRoot = new THREE.Group();
+scene.add(trainRoot);
 
 const seedInput = document.querySelector<HTMLInputElement>("#seed-input");
 const nInput = document.querySelector<HTMLInputElement>("#n-input");
@@ -113,6 +121,10 @@ let railPieces: RailPieces | null = null;
 let railSegmentCount = 0;
 const railHeightRaycaster = new THREE.Raycaster();
 const downDirection = new THREE.Vector3(0, -1, 0);
+const railEdgeSegments: RailEdgeSegment[] = [];
+let trainMotion: TrainMotionController | null = null;
+let trainLoaded = false;
+const trainScale = 1;
 
 function readNumber(input: HTMLInputElement | null, fallback: number) {
   if (!input) {
@@ -177,6 +189,7 @@ function createIslandMaterials(seed: number) {
 function clearRails() {
   railsRoot.clear();
   railSegmentCount = 0;
+  railEdgeSegments.length = 0;
 }
 
 function getIslandSurfaceY(node: RailNode & { radius: number; mesh: THREE.Mesh }, x: number, z: number) {
@@ -193,6 +206,7 @@ function getIslandSurfaceY(node: RailNode & { radius: number; mesh: THREE.Mesh }
 function rebuildRails() {
   clearRails();
   if (!railPieces || railNodes.length < 2) {
+    trainMotion?.setSegments([]);
     return;
   }
 
@@ -224,7 +238,16 @@ function rebuildRails() {
 
     railSegmentCount += group.children.length;
     railsRoot.add(group);
+    railEdgeSegments.push({
+      id: `${edge.fromId}-${edge.toId}`,
+      fromId: edge.fromId,
+      toId: edge.toId,
+      fromPoint: startPoint.clone(),
+      toPoint: endPoint.clone()
+    });
   }
+
+  trainMotion?.setSegments(buildTraversalPath(railEdgeSegments));
 }
 
 function spawnIsland() {
@@ -270,10 +293,21 @@ function spawnIsland() {
 window.__THREE_DRIVE__ = {
   getIslandCount: () => islands.length,
   getCameraDistance: () => camera.position.distanceTo(controls.target),
-  getRailSegmentCount: () => railSegmentCount
+  getRailSegmentCount: () => railSegmentCount,
+  isTrainLoaded: () => trainLoaded,
+  getTrainPosition: () => ({
+    x: trainRoot.position.x,
+    y: trainRoot.position.y,
+    z: trainRoot.position.z
+  }),
+  getTrainScale: () => trainScale
 };
 
-void loadRailPieces("РЕЛЬСыконечные.glb", "РЕЛЬСыосновные.glb")
+const RAIL_START_URL = new URL("../\u0420\u0415\u041b\u042c\u0421\u044b\u043a\u043e\u043d\u0435\u0447\u043d\u044b\u0435.glb", import.meta.url).href;
+const RAIL_MAIN_URL = new URL("../\u0420\u0415\u041b\u042c\u0421\u044b\u043e\u0441\u043d\u043e\u0432\u043d\u044b\u0435.glb", import.meta.url).href;
+const TRAIN_MODEL_URL = new URL("../train/source/train.glb", import.meta.url).href;
+
+void loadRailPieces(RAIL_START_URL, RAIL_MAIN_URL)
   .then((pieces) => {
     railPieces = pieces;
     rebuildRails();
@@ -282,6 +316,19 @@ void loadRailPieces("РЕЛЬСыконечные.glb", "РЕЛЬСыоснов�
   .catch((error) => {
     console.error("Failed to load rail kit", error);
     setStatus("Rail model failed to load. Islands still work, rails disabled.");
+  });
+
+void loadTrainModel(TRAIN_MODEL_URL)
+  .then(({ object }) => {
+    trainRoot.add(object);
+    trainLoaded = true;
+    trainMotion = createTrainMotion(trainRoot, buildTraversalPath(railEdgeSegments), {
+      speed: 8,
+      yOffset: 0.04
+    });
+  })
+  .catch((error) => {
+    console.error("Failed to load train model", error);
   });
 
 renderer.domElement.addEventListener("pointerdown", () => {
@@ -293,8 +340,9 @@ const clock = new THREE.Clock();
 function renderFrame() {
   requestAnimationFrame(renderFrame);
 
-  clock.getDelta();
+  const dt = Math.min(clock.getDelta(), 1 / 30);
   controls.update();
+  trainMotion?.update(dt);
   renderer.render(scene, camera);
 }
 

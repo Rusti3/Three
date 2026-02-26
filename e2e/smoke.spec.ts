@@ -6,6 +6,9 @@ declare global {
       getIslandCount: () => number;
       getCameraDistance: () => number;
       getRailSegmentCount: () => number;
+      isTrainLoaded: () => boolean;
+      getTrainPosition: () => { x: number; y: number; z: number };
+      getTrainScale: () => number;
     };
   }
 }
@@ -26,6 +29,25 @@ test("renders island scene, creates islands on click and supports camera zoom", 
   await page.waitForTimeout(300);
   const railSegments = await page.evaluate(() => window.__THREE_DRIVE__?.getRailSegmentCount() ?? 0);
   expect(railSegments).toBeGreaterThan(0);
+
+  await expect
+    .poll(async () => page.evaluate(() => window.__THREE_DRIVE__?.isTrainLoaded() ?? false), { timeout: 20000 })
+    .toBe(true);
+
+  const scale = await page.evaluate(() => window.__THREE_DRIVE__?.getTrainScale() ?? 0);
+  expect(scale).toBeGreaterThan(0);
+
+  const trainBefore = await page.evaluate(() => window.__THREE_DRIVE__?.getTrainPosition());
+  await page.waitForTimeout(1200);
+  const trainAfter = await page.evaluate(() => window.__THREE_DRIVE__?.getTrainPosition());
+  expect(trainBefore).toBeTruthy();
+  expect(trainAfter).toBeTruthy();
+  const delta = Math.hypot(
+    (trainAfter?.x ?? 0) - (trainBefore?.x ?? 0),
+    (trainAfter?.y ?? 0) - (trainBefore?.y ?? 0),
+    (trainAfter?.z ?? 0) - (trainBefore?.z ?? 0)
+  );
+  expect(delta).toBeGreaterThan(0.05);
 
   await canvas.hover();
   const distBefore = await page.evaluate(() => window.__THREE_DRIVE__?.getCameraDistance() ?? 0);
