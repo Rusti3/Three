@@ -47,6 +47,20 @@ Default values:
 
 ## Version Summary
 
+### v0.5.7 (2026-02-26)
+
+What was done:
+- Removed image-based space background from runtime scene setup.
+- Set scene background to absolute black (`#000000`).
+- Kept procedural white point stars and made them fully opaque for better contrast.
+- Kept scene fog disabled so background stays clean and dark.
+
+Why these functions were added:
+- To get a simple deep-space look: pure dark background with white star dots only.
+
+What changed for the user:
+- Space background is now fully dark with white stars, without any background image.
+
 ### v0.5.6 (2026-02-26)
 
 What was done:

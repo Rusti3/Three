@@ -37,8 +37,8 @@ if (!app) {
 }
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa8c9f0);
-scene.fog = new THREE.Fog(0xa8c9f0, 180, 1200);
+scene.background = new THREE.Color(0x000000);
+scene.fog = null;
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 90, 190);
@@ -86,7 +86,7 @@ for (let i = 0; i < starCount; i += 1) {
 starsGeometry.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
 const stars = new THREE.Points(
   starsGeometry,
-  new THREE.PointsMaterial({ size: 1.2, color: 0xffffff, transparent: true, opacity: 0.6 })
+  new THREE.PointsMaterial({ size: 1.2, color: 0xffffff, transparent: false, opacity: 1 })
 );
 scene.add(stars);
 const railsRoot = new THREE.Group();
