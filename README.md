@@ -46,6 +46,27 @@ Default values:
 
 ## Version Summary
 
+### v0.5.2 (2026-02-26)
+
+What was done:
+- Switched rail updates from full network rebuild to incremental edge append when a new island spawns.
+- Added island top-point extraction and now anchor each new rail link from top point of one island to top point of another.
+- Updated train route replacement to preserve current progress instead of resetting to route start.
+- Rotated loaded train model by 180 degrees around Y to match forward travel direction.
+- Added unit tests for top-point detection and train progress preservation.
+- Extended e2e smoke to verify rail count grows incrementally and train does not hard-jump after new island spawn.
+
+Why these functions were added:
+- To keep existing rails/train motion stable when new islands appear.
+- To build links directly between island peaks with correct 3D inclination.
+- To ensure train visual direction matches actual movement direction.
+
+What changed for the user:
+- New island spawn no longer rebuilds all previous rails.
+- Train keeps moving along the live route when islands are added.
+- Rail links are placed from top point to top point instead of approximate surface offsets.
+- Train now moves forward visually instead of backward.
+
 ### v0.5.0 (2026-02-26)
 
 What was done:

@@ -11,7 +11,12 @@ export type TrainMotionState = {
 
 export type TrainMotionController = {
   update: (dt: number) => void;
-  setSegments: (segments: TrainPathSegment[]) => void;
+  setSegments: (
+    segments: TrainPathSegment[],
+    options?: {
+      preserveProgress?: boolean;
+    }
+  ) => void;
   setSpeed: (speed: number) => void;
   getState: () => TrainMotionState;
 };
@@ -42,6 +47,39 @@ export function createTrainMotion(
   let segmentIndex = 0;
   let distanceOnSegment = 0;
   let speed = opts.speed;
+
+  const projectOnSegments = (position: THREE.Vector3, nextSegments: TrainPathSegment[]) => {
+    let bestIndex = 0;
+    let bestDistanceOnSegment = 0;
+    let bestDistSq = Number.POSITIVE_INFINITY;
+    const line = new THREE.Vector3();
+    const point = new THREE.Vector3();
+
+    for (let i = 0; i < nextSegments.length; i += 1) {
+      const s = nextSegments[i];
+      if (s.length <= 1e-6) {
+        continue;
+      }
+      line.copy(s.end).sub(s.start);
+      const lenSq = line.lengthSq();
+      if (lenSq <= 1e-8) {
+        continue;
+      }
+      const t = Math.max(
+        0,
+        Math.min(1, position.clone().sub(s.start).dot(line) / lenSq)
+      );
+      point.copy(s.start).addScaledVector(line, t);
+      const distSq = point.distanceToSquared(position);
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        bestIndex = i;
+        bestDistanceOnSegment = t * s.length;
+      }
+    }
+
+    return { bestIndex, bestDistanceOnSegment };
+  };
 
   const place = () => {
     if (segments.length === 0) {
@@ -97,10 +135,27 @@ export function createTrainMotion(
     place();
   };
 
-  const setSegments = (nextSegments: TrainPathSegment[]) => {
+  const setSegments = (
+    nextSegments: TrainPathSegment[],
+    options: { preserveProgress?: boolean } = {}
+  ) => {
+    const preserve = options.preserveProgress === true;
+    const anchorPosition = object.position.clone().setY(object.position.y - opts.yOffset);
     segments = nextSegments.slice();
-    segmentIndex = 0;
-    distanceOnSegment = 0;
+    if (segments.length === 0) {
+      segmentIndex = 0;
+      distanceOnSegment = 0;
+      return;
+    }
+
+    if (preserve) {
+      const projected = projectOnSegments(anchorPosition, segments);
+      segmentIndex = projected.bestIndex;
+      distanceOnSegment = projected.bestDistanceOnSegment;
+    } else {
+      segmentIndex = 0;
+      distanceOnSegment = 0;
+    }
     place();
   };
 

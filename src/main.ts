@@ -8,7 +8,8 @@ import { buildIslandGeometry } from "./game/islandMesh";
 import { findSpawnPosition } from "./game/islandPlacement";
 import { randomIslandParamsFromRanges } from "./game/islandRandomParams";
 import { buildRailBetween, type RailPieces } from "./game/railBuilder";
-import { buildMstEdges, type RailNode } from "./game/railGraph";
+import type { RailNode } from "./game/railGraph";
+import { getIslandTopPoint } from "./game/islandTopPoint";
 import { loadRailPieces } from "./game/railKit";
 import { createTrainMotion, type TrainMotionController } from "./game/trainMotion";
 import { loadTrainModel } from "./game/trainModel";
@@ -116,11 +117,9 @@ const islandShell = new THREE.MeshStandardMaterial({
 });
 
 const islands: PlacedIsland[] = [];
-const railNodes: Array<RailNode & { radius: number; mesh: THREE.Mesh }> = [];
+const railNodes: Array<RailNode & { radius: number; mesh: THREE.Mesh; topPoint: THREE.Vector3 }> = [];
 let railPieces: RailPieces | null = null;
 let railSegmentCount = 0;
-const railHeightRaycaster = new THREE.Raycaster();
-const downDirection = new THREE.Vector3(0, -1, 0);
 const railEdgeSegments: RailEdgeSegment[] = [];
 let trainMotion: TrainMotionController | null = null;
 let trainLoaded = false;
@@ -186,68 +185,60 @@ function createIslandMaterials(seed: number) {
   return top;
 }
 
-function clearRails() {
+function clearRailMeshes() {
   railsRoot.clear();
   railSegmentCount = 0;
-  railEdgeSegments.length = 0;
 }
 
-function getIslandSurfaceY(node: RailNode & { radius: number; mesh: THREE.Mesh }, x: number, z: number) {
-  const rayOriginY = node.position.y + 220;
-  railHeightRaycaster.set(new THREE.Vector3(x, rayOriginY, z), downDirection);
-  const hits = railHeightRaycaster.intersectObject(node.mesh, false);
-  if (hits.length > 0) {
-    return hits[0].point.y + 0.04;
-  }
-  const box = new THREE.Box3().setFromObject(node.mesh);
-  return box.max.y + 0.04;
-}
-
-function rebuildRails() {
-  clearRails();
-  if (!railPieces || railNodes.length < 2) {
-    trainMotion?.setSegments([]);
+function addRailMeshForEdge(edge: RailEdgeSegment) {
+  if (!railPieces) {
     return;
   }
+  const group = buildRailBetween(railPieces, edge.fromPoint, edge.toPoint, { minOffset: 0 });
+  railSegmentCount += group.children.length;
+  railsRoot.add(group);
+}
 
-  const byId = new Map(railNodes.map((n) => [n.id, n]));
-  const edges = buildMstEdges(railNodes);
+function rebuildRailMeshesFromStoredEdges() {
+  clearRailMeshes();
+  if (!railPieces) {
+    return;
+  }
+  for (const edge of railEdgeSegments) {
+    addRailMeshForEdge(edge);
+  }
+}
 
-  for (const edge of edges) {
-    const a = byId.get(edge.fromId);
-    const b = byId.get(edge.toId);
-    if (!a || !b) {
+function appendRailEdge(edge: RailEdgeSegment) {
+  railEdgeSegments.push(edge);
+  addRailMeshForEdge(edge);
+  trainMotion?.setSegments(buildTraversalPath(railEdgeSegments), { preserveProgress: true });
+}
+
+function createNearestIslandEdge(newNode: RailNode & { topPoint: THREE.Vector3 }) {
+  let nearest: (RailNode & { topPoint: THREE.Vector3 }) | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const node of railNodes) {
+    if (node.id === newNode.id) {
       continue;
     }
-
-    const distance = Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z);
-    const dir = new THREE.Vector3().subVectors(b.position, a.position);
-    if (distance <= 1e-3) {
-      continue;
+    const d = node.topPoint.distanceTo(newNode.topPoint);
+    if (d < bestDistance) {
+      bestDistance = d;
+      nearest = node;
     }
-    const normalized = dir.clone().normalize();
-    const startOffset = Math.min(distance * 0.3, Math.max(1, a.radius * 0.4));
-    const endOffset = Math.min(distance * 0.3, Math.max(1, b.radius * 0.4));
-    const startPoint = a.position.clone().add(normalized.clone().multiplyScalar(startOffset));
-    const endPoint = b.position.clone().sub(normalized.clone().multiplyScalar(endOffset));
-
-    startPoint.y = getIslandSurfaceY(a, startPoint.x, startPoint.z);
-    endPoint.y = getIslandSurfaceY(b, endPoint.x, endPoint.z);
-
-    const group = buildRailBetween(railPieces, startPoint, endPoint, { minOffset: 0.2 });
-
-    railSegmentCount += group.children.length;
-    railsRoot.add(group);
-    railEdgeSegments.push({
-      id: `${edge.fromId}-${edge.toId}`,
-      fromId: edge.fromId,
-      toId: edge.toId,
-      fromPoint: startPoint.clone(),
-      toPoint: endPoint.clone()
-    });
+  }
+  if (!nearest) {
+    return null;
   }
 
-  trainMotion?.setSegments(buildTraversalPath(railEdgeSegments));
+  return {
+    id: `${nearest.id}-${newNode.id}-${railEdgeSegments.length + 1}`,
+    fromId: nearest.id,
+    toId: newNode.id,
+    fromPoint: nearest.topPoint.clone(),
+    toPoint: newNode.topPoint.clone()
+  } satisfies RailEdgeSegment;
 }
 
 function spawnIsland() {
@@ -276,13 +267,20 @@ function spawnIsland() {
 
   islands.push({ x: pos.x, z: pos.z, radius: approxRadius });
   const islandId = `${params.namePrefix}_${islands.length}`;
-  railNodes.push({
+  const newRailNode = {
     id: islandId,
     position: mesh.position.clone(),
     radius: approxRadius,
-    mesh
-  });
-  rebuildRails();
+    mesh,
+    topPoint: getIslandTopPoint(mesh)
+  };
+  railNodes.push(newRailNode);
+  if (railNodes.length >= 2) {
+    const edge = createNearestIslandEdge(newRailNode);
+    if (edge) {
+      appendRailEdge(edge);
+    }
+  }
   updateIslandCount();
   const lodInfo = adaptiveN !== params.n ? `, adaptiveN=${adaptiveN}` : "";
   setStatus(
@@ -310,7 +308,7 @@ const TRAIN_MODEL_URL = new URL("../train/source/train.glb", import.meta.url).hr
 void loadRailPieces(RAIL_START_URL, RAIL_MAIN_URL)
   .then((pieces) => {
     railPieces = pieces;
-    rebuildRails();
+    rebuildRailMeshesFromStoredEdges();
     setStatus("Rail kit loaded (start+main). Click canvas to spawn islands and auto-build rails.");
   })
   .catch((error) => {

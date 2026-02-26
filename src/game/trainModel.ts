@@ -42,6 +42,9 @@ export async function loadTrainModel(url: string): Promise<TrainLoadResult> {
   });
 
   alignForwardAxis(root);
+  // Asset forward is currently reversed relative to travel direction.
+  root.rotation.y += Math.PI;
+  root.updateMatrixWorld(true);
   centerAndGround(root);
   const bbox = new THREE.Box3().setFromObject(root);
 

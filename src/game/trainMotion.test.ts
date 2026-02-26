@@ -48,4 +48,25 @@ describe("train motion", () => {
     motion.update(0.1);
     expect(Math.abs(train.rotation.x)).toBeGreaterThan(0.01);
   });
+
+  it("preserves progress when segments are replaced", () => {
+    const train = new THREE.Group();
+    const motion = createTrainMotion(train, [segment([0, 0, 0], [20, 0, 0])], {
+      speed: 5,
+      yOffset: 0
+    });
+    motion.update(1.2);
+    const before = motion.getState().position.clone();
+
+    motion.setSegments(
+      [
+        segment([0, 0, 0], [20, 0, 0]),
+        segment([20, 0, 0], [20, 0, 10])
+      ],
+      { preserveProgress: true }
+    );
+
+    const after = motion.getState().position.clone();
+    expect(after.distanceTo(before)).toBeLessThan(0.5);
+  });
 });
