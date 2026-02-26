@@ -68,22 +68,13 @@ export function buildRailBetween(
   }
 
   dirXZ.normalize();
-  const line3d = end.clone().sub(start);
-  const line3dLength = line3d.length();
-  if (line3dLength <= 1e-6) {
-    return group;
-  }
-  const direction3d = line3d.clone().normalize();
-  const orientation = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1),
-    direction3d
-  );
+  // Keep rail rotation on one axis only (Y): island-to-island horizontal direction.
+  const yaw = Math.atan2(dirXZ.x, dirXZ.z);
+  const orientation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
 
-  // Convert section lengths to XZ distances to keep joints consistent on a slope.
-  const xzScale = totalDistanceXZ / line3dLength;
-  const startLengthXZ = pieces.startLength * xzScale;
-  const mainLengthXZ = pieces.mainLength * xzScale;
-  const endLengthXZ = pieces.endLength * xzScale;
+  const startLengthXZ = pieces.startLength;
+  const mainLengthXZ = pieces.mainLength;
+  const endLengthXZ = pieces.endLength;
 
   const offsets = Math.max(options.minOffset, 0);
   const startBeginS = offsets;

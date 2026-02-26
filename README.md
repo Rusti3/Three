@@ -46,6 +46,21 @@ Default values:
 
 ## Version Summary
 
+### v0.5.3 (2026-02-26)
+
+What was done:
+- Changed rail orientation logic to rotate only around one axis (`Y`) toward island-to-island direction.
+- Removed pitch-based rail rotation (`X`) and roll (`Z`) from rail placement.
+- Kept height interpolation between islands, but rail meshes no longer tilt by slope.
+- Updated rail builder tests to verify one-axis rotation behavior and no X/Z tilt.
+
+Why these functions were added:
+- To enforce strict single-axis rail rotation as requested.
+
+What changed for the user:
+- Rails now turn only horizontally toward the target island.
+- Rails no longer lean/tilt in pitch/roll while connecting different island heights.
+
 ### v0.5.2 (2026-02-26)
 
 What was done:

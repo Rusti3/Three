@@ -29,7 +29,7 @@ describe("rail builder", () => {
     expect(group.children[0].uuid).not.toBe(group.children[1].uuid);
   });
 
-  it("accounts for start/end heights by applying vertical slope", () => {
+  it("accounts for start/end heights without pitch rotation", () => {
     const kit: RailPieces = {
       start: makeSection(3),
       main: makeSection(5),
@@ -46,6 +46,27 @@ describe("rail builder", () => {
     const startY = group.children[0].position.y;
     const endY = group.children[group.children.length - 1].position.y;
     expect(endY).toBeGreaterThan(startY);
-    expect(Math.abs(group.children[0].rotation.x)).toBeGreaterThan(0.01);
+    expect(Math.abs(group.children[0].rotation.x)).toBeLessThan(1e-6);
+    expect(Math.abs(group.children[0].rotation.z)).toBeLessThan(1e-6);
+  });
+
+  it("rotates rails only on Y axis toward the destination", () => {
+    const kit: RailPieces = {
+      start: makeSection(3),
+      main: makeSection(5),
+      startLength: 3,
+      mainLength: 5,
+      endLength: 3
+    };
+
+    const start = new THREE.Vector3(0, 10, 0);
+    const end = new THREE.Vector3(20, 14, 20);
+    const group = buildRailBetween(kit, start, end, { minOffset: 0 });
+
+    expect(group.children.length).toBeGreaterThanOrEqual(3);
+    const piece = group.children[0];
+    expect(Math.abs(piece.rotation.y)).toBeGreaterThan(0.1);
+    expect(Math.abs(piece.rotation.x)).toBeLessThan(1e-6);
+    expect(Math.abs(piece.rotation.z)).toBeLessThan(1e-6);
   });
 });
