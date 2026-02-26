@@ -3,6 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import "./style.css";
 import { createIslandData, type IslandParams } from "./game/islandGenerator";
+import { chooseAdaptiveResolution } from "./game/islandLod";
 import { buildIslandGeometry } from "./game/islandMesh";
 import { findSpawnPosition } from "./game/islandPlacement";
 import type { PlacedIsland } from "./game/islandTypes";
@@ -143,7 +144,9 @@ function createIslandMaterials(seed: number) {
 
 function spawnIsland() {
   const params = readParams();
-  const data = createIslandData(params);
+  const adaptiveN = chooseAdaptiveResolution(params.n, islands.length);
+  const effectiveParams = { ...params, n: adaptiveN };
+  const data = createIslandData(effectiveParams);
   const { geometry, approxRadius } = buildIslandGeometry(data);
   const pos = findSpawnPosition(islands, approxRadius, WORLD_RADIUS, PADDING, MAX_ATTEMPTS);
   if (!pos) {
@@ -164,7 +167,8 @@ function spawnIsland() {
 
   islands.push({ x: pos.x, z: pos.z, radius: approxRadius });
   updateIslandCount();
-  setStatus(`${mesh.name} spawned (N=${params.n}, seed=${params.seed}).`);
+  const lodInfo = adaptiveN !== params.n ? `, adaptiveN=${adaptiveN}` : "";
+  setStatus(`${mesh.name} spawned (N=${params.n}${lodInfo}, seed=${params.seed}).`);
 }
 
 window.__THREE_DRIVE__ = {

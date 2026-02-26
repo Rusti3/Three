@@ -45,6 +45,21 @@ Default values:
 
 ## Version Summary
 
+### v0.3.1 (2026-02-26)
+
+What was done:
+- Added adaptive LOD for island mesh resolution.
+- `N` now auto-reduces for newly spawned islands when island count grows.
+- Added unit tests for adaptive resolution policy.
+
+Why these functions were added:
+- To keep FPS more stable when many islands are present.
+- To preserve high detail for early islands while gradually reducing cost at scale.
+
+What changed for the user:
+- You still set `N` in UI, but at high island counts the actual resolution for new islands may be lower.
+- Spawn status now shows `adaptiveN` when automatic reduction is applied.
+
 ### v0.3.0 (2026-02-26)
 
 What was done:
@@ -66,6 +81,3 @@ What changed for the user:
 - Clicking the scene now creates floating islands.
 - Camera can orbit/pan/zoom with mouse.
 - Terrain parameters can be changed before each new island spawn.
-
-Possible optimization idea:
-- Add adaptive resolution policy (reduce `N` automatically when island count grows) to stabilize FPS at high counts.
